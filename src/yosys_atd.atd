@@ -1,0 +1,47 @@
+type dyn <ocaml module="Yojson.Safe" t="json"> = abstract
+type direction = [ Input <json name="input"> | Output <json name="output">]
+type bits = int list
+type param_value = dyn
+
+type port = 
+  {
+    direction : direction;
+    bits : bits;
+  }
+
+type attributes = 
+  {
+    src : string;
+  }
+
+type cell = 
+  {
+    hide_name : int;
+    typ <json name="type"> : string;
+    parameters : (string * param_value) list <json repr="object">;
+    attributes : attributes;
+    port_directions : (string * direction) list <json repr="object">;
+    connections : (string * bits) list <json repr="object">;
+  }
+
+type netname =
+  {
+    hide_name : int;
+    bits : bits;
+    attributes : attributes;
+  }
+
+type modl = 
+  {
+    ports : (string * port) list <json repr="object">;
+    cells : (string * cell) list <json repr="object">;
+    netnames : (string * netname) list <json repr="object">;
+  }
+
+type t = 
+  {
+    creator : string;
+    modl <json name="modules"> : (string * modl) list <json repr="object">;
+  }
+
+

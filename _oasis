@@ -1,0 +1,22 @@
+OASISFormat: 0.4
+Name:        hardcaml
+Version:     1.1.1
+Synopsis:    Hardware in OCaml
+Description: Design, simulate, analyse and transform RTL
+  level hardware designs.
+
+Authors:     Andy Ray
+Maintainers: Andy Ray <andy.ray@ujamjar.com>
+Homepage:    https://github.com/ujamjar/hardcaml
+License:     ISC
+Plugins:     META (0.4)
+BuildTools:  ocamlbuild
+
+Library HardCamlYosys
+  Path:          src
+  Findlibname:   hardcaml-yosys
+  Pack:          true
+  Modules:       Yosys_atd_t, Yosys_atd_j, Io, Techlib, Import
+  BuildDepends:  hardcaml.syntax, atdgen
+  XMETARequires: hardcaml, atdgen
+
