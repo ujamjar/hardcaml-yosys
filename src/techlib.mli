@@ -1,19 +1,15 @@
+open HardCaml
+
 exception Invalid_parameter of string
 exception Invalid_input of string
 
 type 'a assoc = (string * 'a) list
+type cell = Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc
 
 module Simlib : sig
 
-  open HardCaml
-
-  type cell = Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc
-
   module Wrapper(P : Interface.S)(I : Interface.S)(O : Interface.S) : sig
     type fn = string * (Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
-    (*val of_list_p : 'a assoc -> 'a P.t
-    val of_list_i : 'a assoc -> 'a I.t
-    val to_list_o : 'a O.t -> 'a assoc*)
     val wrapper : fn -> string * cell
   end
 

@@ -1,14 +1,14 @@
+open HardCaml
+
 exception Invalid_parameter of string
 exception Invalid_input of string
 
 type 'a assoc = (string * 'a) list
+type cell = (Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc)
 
 module Simlib = struct
 
-  open HardCaml
   open Signal.Comb
-
-  type cell = (Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc)
 
   let (^~:) a b = ~: (a ^: b)
 

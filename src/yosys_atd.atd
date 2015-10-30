@@ -11,7 +11,7 @@ type port =
 
 type attributes = 
   {
-    src : string;
+    ~src : string;
   }
 
 type cell = 
