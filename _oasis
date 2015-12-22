@@ -1,13 +1,13 @@
 OASISFormat: 0.4
-Name:        hardcaml
-Version:     1.1.1
-Synopsis:    Hardware in OCaml
-Description: Design, simulate, analyse and transform RTL
-  level hardware designs.
+Name:        hardcaml-yosys
+Version:     0.1.0
+Synopsis:    Import Verilog designs into HardCaml 
+Description: Use yosys to convert a Verilog design into JSON then 
+             use this library to load it as a HardCaml design.
 
 Authors:     Andy Ray
 Maintainers: Andy Ray <andy.ray@ujamjar.com>
-Homepage:    https://github.com/ujamjar/hardcaml
+Homepage:    https://github.com/ujamjar/hardcaml-yosys
 License:     ISC
 Plugins:     META (0.4)
 BuildTools:  ocamlbuild
