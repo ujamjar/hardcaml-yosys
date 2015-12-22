@@ -12,6 +12,8 @@ type port =
 type attributes = 
   {
     ~src : string;
+    ~full_case : int;
+    ~parallel_case : int;
   }
 
 type cell = 

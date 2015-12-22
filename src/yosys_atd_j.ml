@@ -11,7 +11,11 @@ type port = Yosys_atd_t.port = { direction: direction; bits: bits }
 
 type param_value = Yosys_atd_t.param_value
 
-type attributes = Yosys_atd_t.attributes = { src: string }
+type attributes = Yosys_atd_t.attributes = {
+  src: string;
+  full_case: int;
+  parallel_case: int
+}
 
 type netname = Yosys_atd_t.netname = {
   hide_name: int;
@@ -370,6 +374,28 @@ let write_attributes : _ -> attributes -> _ = (
       )
         ob x.src;
     );
+    if x.full_case <> 0 then (
+      if !is_first then
+        is_first := false
+      else
+        Bi_outbuf.add_char ob ',';
+      Bi_outbuf.add_string ob "\"full_case\":";
+      (
+        Yojson.Safe.write_int
+      )
+        ob x.full_case;
+    );
+    if x.parallel_case <> 0 then (
+      if !is_first then
+        is_first := false
+      else
+        Bi_outbuf.add_char ob ',';
+      Bi_outbuf.add_string ob "\"parallel_case\":";
+      (
+        Yojson.Safe.write_int
+      )
+        ob x.parallel_case;
+    );
     Bi_outbuf.add_char ob '}';
 )
 let string_of_attributes ?(len = 1024) x =
@@ -381,6 +407,8 @@ let read_attributes = (
     Yojson.Safe.read_space p lb;
     Yojson.Safe.read_lcurl p lb;
     let field_src = ref ("") in
+    let field_full_case = ref (0) in
+    let field_parallel_case = ref (0) in
     try
       Yojson.Safe.read_space p lb;
       Yojson.Safe.read_object_end lb;
@@ -389,12 +417,34 @@ let read_attributes = (
         fun s pos len ->
           if pos < 0 || len < 0 || pos + len > String.length s then
             invalid_arg "out-of-bounds substring position or length";
-          if len = 3 && String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'r' && String.unsafe_get s (pos+2) = 'c' then (
-            0
-          )
-          else (
-            (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-26" (String.sub s pos len); -1
-          )
+          match len with
+            | 3 -> (
+                if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'r' && String.unsafe_get s (pos+2) = 'c' then (
+                  0
+                )
+                else (
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                )
+              )
+            | 9 -> (
+                if String.unsafe_get s pos = 'f' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'l' && String.unsafe_get s (pos+3) = 'l' && String.unsafe_get s (pos+4) = '_' && String.unsafe_get s (pos+5) = 'c' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 's' && String.unsafe_get s (pos+8) = 'e' then (
+                  1
+                )
+                else (
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                )
+              )
+            | 13 -> (
+                if String.unsafe_get s pos = 'p' && String.unsafe_get s (pos+1) = 'a' && String.unsafe_get s (pos+2) = 'r' && String.unsafe_get s (pos+3) = 'a' && String.unsafe_get s (pos+4) = 'l' && String.unsafe_get s (pos+5) = 'l' && String.unsafe_get s (pos+6) = 'e' && String.unsafe_get s (pos+7) = 'l' && String.unsafe_get s (pos+8) = '_' && String.unsafe_get s (pos+9) = 'c' && String.unsafe_get s (pos+10) = 'a' && String.unsafe_get s (pos+11) = 's' && String.unsafe_get s (pos+12) = 'e' then (
+                  2
+                )
+                else (
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                )
+              )
+            | _ -> (
+                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+              )
       in
       let i = Yojson.Safe.map_ident p f lb in
       Ag_oj_run.read_until_field_value p lb;
@@ -405,6 +455,22 @@ let read_attributes = (
               field_src := (
                 (
                   Ag_oj_run.read_string
+                ) p lb
+              );
+            )
+          | 1 ->
+            if not (Yojson.Safe.read_null_if_possible p lb) then (
+              field_full_case := (
+                (
+                  Ag_oj_run.read_int
+                ) p lb
+              );
+            )
+          | 2 ->
+            if not (Yojson.Safe.read_null_if_possible p lb) then (
+              field_parallel_case := (
+                (
+                  Ag_oj_run.read_int
                 ) p lb
               );
             )
@@ -420,12 +486,34 @@ let read_attributes = (
           fun s pos len ->
             if pos < 0 || len < 0 || pos + len > String.length s then
               invalid_arg "out-of-bounds substring position or length";
-            if len = 3 && String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'r' && String.unsafe_get s (pos+2) = 'c' then (
-              0
-            )
-            else (
-              (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-26" (String.sub s pos len); -1
-            )
+            match len with
+              | 3 -> (
+                  if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'r' && String.unsafe_get s (pos+2) = 'c' then (
+                    0
+                  )
+                  else (
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                  )
+                )
+              | 9 -> (
+                  if String.unsafe_get s pos = 'f' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'l' && String.unsafe_get s (pos+3) = 'l' && String.unsafe_get s (pos+4) = '_' && String.unsafe_get s (pos+5) = 'c' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 's' && String.unsafe_get s (pos+8) = 'e' then (
+                    1
+                  )
+                  else (
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                  )
+                )
+              | 13 -> (
+                  if String.unsafe_get s pos = 'p' && String.unsafe_get s (pos+1) = 'a' && String.unsafe_get s (pos+2) = 'r' && String.unsafe_get s (pos+3) = 'a' && String.unsafe_get s (pos+4) = 'l' && String.unsafe_get s (pos+5) = 'l' && String.unsafe_get s (pos+6) = 'e' && String.unsafe_get s (pos+7) = 'l' && String.unsafe_get s (pos+8) = '_' && String.unsafe_get s (pos+9) = 'c' && String.unsafe_get s (pos+10) = 'a' && String.unsafe_get s (pos+11) = 's' && String.unsafe_get s (pos+12) = 'e' then (
+                    2
+                  )
+                  else (
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                  )
+                )
+              | _ -> (
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 13, characters 2-74" (String.sub s pos len); -1
+                )
         in
         let i = Yojson.Safe.map_ident p f lb in
         Ag_oj_run.read_until_field_value p lb;
@@ -439,6 +527,22 @@ let read_attributes = (
                   ) p lb
                 );
               )
+            | 1 ->
+              if not (Yojson.Safe.read_null_if_possible p lb) then (
+                field_full_case := (
+                  (
+                    Ag_oj_run.read_int
+                  ) p lb
+                );
+              )
+            | 2 ->
+              if not (Yojson.Safe.read_null_if_possible p lb) then (
+                field_parallel_case := (
+                  (
+                    Ag_oj_run.read_int
+                  ) p lb
+                );
+              )
             | _ -> (
                 Yojson.Safe.skip_json p lb
               )
@@ -449,6 +553,8 @@ let read_attributes = (
         (
           {
             src = !field_src;
+            full_case = !field_full_case;
+            parallel_case = !field_parallel_case;
           }
          : attributes)
       )
@@ -514,7 +620,7 @@ let read_netname = (
                   1
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                 )
               )
             | 9 -> (
@@ -522,7 +628,7 @@ let read_netname = (
                   0
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                 )
               )
             | 10 -> (
@@ -530,11 +636,11 @@ let read_netname = (
                   2
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                 )
               )
             | _ -> (
-                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
               )
       in
       let i = Yojson.Safe.map_ident p f lb in
@@ -580,7 +686,7 @@ let read_netname = (
                     1
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                   )
                 )
               | 9 -> (
@@ -588,7 +694,7 @@ let read_netname = (
                     0
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                   )
                 )
               | 10 -> (
@@ -596,11 +702,11 @@ let read_netname = (
                     2
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                   )
                 )
               | _ -> (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 28, characters 2-74" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 30, characters 2-74" (String.sub s pos len); -1
                 )
         in
         let i = Yojson.Safe.map_ident p f lb in
@@ -796,7 +902,7 @@ let read_cell = (
                   1
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                 )
               )
             | 9 -> (
@@ -804,7 +910,7 @@ let read_cell = (
                   0
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                 )
               )
             | 10 -> (
@@ -814,7 +920,7 @@ let read_cell = (
                         3
                       )
                       else (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                       )
                     )
                   | 'p' -> (
@@ -822,11 +928,11 @@ let read_cell = (
                         2
                       )
                       else (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                       )
                     )
                   | _ -> (
-                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                     )
               )
             | 11 -> (
@@ -834,7 +940,7 @@ let read_cell = (
                   5
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                 )
               )
             | 15 -> (
@@ -842,11 +948,11 @@ let read_cell = (
                   4
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                 )
               )
             | _ -> (
-                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
               )
       in
       let i = Yojson.Safe.map_ident p f lb in
@@ -913,7 +1019,7 @@ let read_cell = (
                     1
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                   )
                 )
               | 9 -> (
@@ -921,7 +1027,7 @@ let read_cell = (
                     0
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                   )
                 )
               | 10 -> (
@@ -931,7 +1037,7 @@ let read_cell = (
                           3
                         )
                         else (
-                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                         )
                       )
                     | 'p' -> (
@@ -939,11 +1045,11 @@ let read_cell = (
                           2
                         )
                         else (
-                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                         )
                       )
                     | _ -> (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                       )
                 )
               | 11 -> (
@@ -951,7 +1057,7 @@ let read_cell = (
                     5
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                   )
                 )
               | 15 -> (
@@ -959,11 +1065,11 @@ let read_cell = (
                     4
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                   )
                 )
               | _ -> (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 18, characters 2-292" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 20, characters 2-292" (String.sub s pos len); -1
                 )
         in
         let i = Yojson.Safe.map_ident p f lb in
@@ -1155,7 +1261,7 @@ let read_modl = (
                         1
                       )
                       else (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                       )
                     )
                   | 'p' -> (
@@ -1163,11 +1269,11 @@ let read_modl = (
                         0
                       )
                       else (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                       )
                     )
                   | _ -> (
-                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                     )
               )
             | 8 -> (
@@ -1175,11 +1281,11 @@ let read_modl = (
                   2
                 )
                 else (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                 )
               )
             | _ -> (
-                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
               )
       in
       let i = Yojson.Safe.map_ident p f lb in
@@ -1227,7 +1333,7 @@ let read_modl = (
                           1
                         )
                         else (
-                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                         )
                       )
                     | 'p' -> (
@@ -1235,11 +1341,11 @@ let read_modl = (
                           0
                         )
                         else (
-                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                          (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                         )
                       )
                     | _ -> (
-                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                        (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                       )
                 )
               | 8 -> (
@@ -1247,11 +1353,11 @@ let read_modl = (
                     2
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                   )
                 )
               | _ -> (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 35, characters 2-178" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 37, characters 2-178" (String.sub s pos len); -1
                 )
         in
         let i = Yojson.Safe.map_ident p f lb in
@@ -1368,7 +1474,7 @@ let read_t = (
                     0
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                   )
                 )
               | 'm' -> (
@@ -1376,15 +1482,15 @@ let read_t = (
                     1
                   )
                   else (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                   )
                 )
               | _ -> (
-                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                  (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                 )
           )
           else (
-            (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+            (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
           )
       in
       let i = Yojson.Safe.map_ident p f lb in
@@ -1424,7 +1530,7 @@ let read_t = (
                       0
                     )
                     else (
-                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                     )
                   )
                 | 'm' -> (
@@ -1432,15 +1538,15 @@ let read_t = (
                       1
                     )
                     else (
-                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                      (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                     )
                   )
                 | _ -> (
-                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+                    (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
                   )
             )
             else (
-              (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 42, characters 2-105" (String.sub s pos len); -1
+              (!Ag_util.Json.unknown_field_handler) "File \"yosys_atd.atd\", line 44, characters 2-105" (String.sub s pos len); -1
             )
         in
         let i = Yojson.Safe.map_ident p f lb in

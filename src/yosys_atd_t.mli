@@ -11,7 +11,7 @@ type port = { direction: direction; bits: bits }
 
 type param_value = dyn
 
-type attributes = { src: string }
+type attributes = { src: string; full_case: int; parallel_case: int }
 
 type netname = { hide_name: int; bits: bits; attributes: attributes }
 

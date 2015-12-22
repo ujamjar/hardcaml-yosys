@@ -11,7 +11,11 @@ type port = Yosys_atd_t.port = { direction: direction; bits: bits }
 
 type param_value = Yosys_atd_t.param_value
 
-type attributes = Yosys_atd_t.attributes = { src: string }
+type attributes = Yosys_atd_t.attributes = {
+  src: string;
+  full_case: int;
+  parallel_case: int
+}
 
 type netname = Yosys_atd_t.netname = {
   hide_name: int;
