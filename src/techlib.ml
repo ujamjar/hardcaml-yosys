@@ -451,7 +451,28 @@ module Simlib = struct
     let get_output_width p = O.({ q = p.P.width })
   end
 
-  (* module dlatch = struct ... end *)
+  module Dlatch = struct
+    module P = interface WIDTH EN_POLARITY end
+    module I = interface EN D end
+    module O = interface Q end
+    module W = Wrapper(P)(I)(O)
+    let get_input_width p = I.({ en = 1; d = p.P.width })
+    let get_output_width p = O.({ q = p.P.width })
+    let dlatch p i = 
+      let open I in
+      let p = P.map pint p in
+      assert (width i.d = p.P.width);
+      let inst = 
+      Signal.Instantiation.(inst "dlatch" 
+        P.(to_list @@ map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p)
+        I.(to_list @@ map2 (fun (n,_) x -> n, x) t i)
+        O.(to_list @@ map2 (fun (n,_) x -> n, x) t (get_output_width p)))
+      in
+      O.(map (fun (n,_) -> inst#o n) t)
+    let dlatch = "$dlatch", dlatch
+    let cells = [ dlatch ]
+  end
+  
   (* module dlatchsr = struct ... end *)
   (* module fsm = struct ... end *)
 
@@ -473,7 +494,8 @@ module Simlib = struct
     (List.map Dff.W.wrapper Dff.cells) @
     (List.map Dffe.W.wrapper Dffe.cells) @
     (List.map Dffsr.W.wrapper Dffsr.cells) @
-    (List.map Adff.W.wrapper Adff.cells) 
+    (List.map Adff.W.wrapper Adff.cells) @
+    (List.map Dlatch.W.wrapper Dlatch.cells) 
 
 end
 
