@@ -4,6 +4,8 @@ exception Unsupported_parameter_type of string * string
 exception Failed_to_find_net of int
 exception Input_not_found of string
 exception Empty_bus
+exception Invalid_net_tristate
+exception Invalid_net_bit_specifier of string
 
 module I : Map.S
 module S : Map.S

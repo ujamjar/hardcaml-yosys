@@ -1,13 +1,13 @@
 (* Auto-generated from "yosys_atd.atd" *)
 
 
+type dyn = Yojson.Safe.json
+
 type direction = [ `Input | `Output ]
 
-type bits = int list
+type bits = dyn list
 
 type port = { direction: direction; bits: bits }
-
-type dyn = Yojson.Safe.json
 
 type param_value = dyn
 

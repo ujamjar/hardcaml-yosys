@@ -1,13 +1,13 @@
 (* Auto-generated from "yosys_atd.atd" *)
 
 
+type dyn = Yojson.Safe.json
+
 type direction = Yosys_atd_t.direction
 
 type bits = Yosys_atd_t.bits
 
 type port = Yosys_atd_t.port = { direction: direction; bits: bits }
-
-type dyn = Yojson.Safe.json
 
 type param_value = Yosys_atd_t.param_value
 
@@ -35,6 +35,26 @@ type modl = Yosys_atd_t.modl = {
 }
 
 type t = Yosys_atd_t.t = { creator: string; modl: (string * modl) list }
+
+val write_dyn :
+  Bi_outbuf.t -> dyn -> unit
+  (** Output a JSON value of type {!dyn}. *)
+
+val string_of_dyn :
+  ?len:int -> dyn -> string
+  (** Serialize a value of type {!dyn}
+      into a JSON string.
+      @param len specifies the initial length
+                 of the buffer used internally.
+                 Default: 1024. *)
+
+val read_dyn :
+  Yojson.Safe.lexer_state -> Lexing.lexbuf -> dyn
+  (** Input JSON data of type {!dyn}. *)
+
+val dyn_of_string :
+  string -> dyn
+  (** Deserialize JSON data of type {!dyn}. *)
 
 val write_direction :
   Bi_outbuf.t -> direction -> unit
@@ -95,26 +115,6 @@ val read_port :
 val port_of_string :
   string -> port
   (** Deserialize JSON data of type {!port}. *)
-
-val write_dyn :
-  Bi_outbuf.t -> dyn -> unit
-  (** Output a JSON value of type {!dyn}. *)
-
-val string_of_dyn :
-  ?len:int -> dyn -> string
-  (** Serialize a value of type {!dyn}
-      into a JSON string.
-      @param len specifies the initial length
-                 of the buffer used internally.
-                 Default: 1024. *)
-
-val read_dyn :
-  Yojson.Safe.lexer_state -> Lexing.lexbuf -> dyn
-  (** Input JSON data of type {!dyn}. *)
-
-val dyn_of_string :
-  string -> dyn
-  (** Deserialize JSON data of type {!dyn}. *)
 
 val write_param_value :
   Bi_outbuf.t -> param_value -> unit

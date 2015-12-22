@@ -7,6 +7,8 @@ exception Unsupported_parameter_type of string * string
 exception Failed_to_find_net of int
 exception Input_not_found of string
 exception Empty_bus
+exception Invalid_net_tristate
+exception Invalid_net_bit_specifier of string
 
 module I = Map.Make(struct type t = int let compare = compare end)
 module S = Map.Make(struct type t = string let compare = compare end)
@@ -22,6 +24,13 @@ type cell =
   }
 
 type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t Techlib.assoc
+
+let net_of_bit = function
+  | `Int i -> i
+  | `String "x" | `String "X" -> 0
+  | `String "z" | `String "Z" -> raise Invalid_net_tristate
+  | `String x -> (try int_of_string x with _ -> raise (Invalid_net_bit_specifier x))
+  | _ -> raise (Invalid_net_bit_specifier "unknown json type")
 
 (* something drives a net; it's either a module input, or a cell output. 
 
@@ -39,6 +48,7 @@ let modl_wire_map ports cells =
     let wire = Signal.Comb.wire (List.length bits) in
     (name,wire), snd @@ List.fold_left 
       (fun (idx,map) bit ->
+        let bit = net_of_bit bit in
         (* note; adding [bit] if it is already in the list 
             should be an error (well...except for trisates!) *)
         (*printf "%i -> %Li[%i]\n" bit (Signal.Types.uid wire) idx;*)
@@ -103,6 +113,7 @@ let load techlib t =
   let open Signal.Comb in
 
   let get_bus map bus = 
+    let bus = List.map net_of_bit bus in
     let find b =
       try I.find b map 
       with Not_found -> raise (Failed_to_find_net(b))

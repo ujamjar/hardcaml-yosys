@@ -1,6 +1,6 @@
 type dyn <ocaml module="Yojson.Safe" t="json"> = abstract
 type direction = [ Input <json name="input"> | Output <json name="output">]
-type bits = int list
+type bits = dyn list
 type param_value = dyn
 
 type port = 

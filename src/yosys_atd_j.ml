@@ -1,13 +1,13 @@
 (* Auto-generated from "yosys_atd.atd" *)
 
 
+type dyn = Yojson.Safe.json
+
 type direction = Yosys_atd_t.direction
 
 type bits = Yosys_atd_t.bits
 
 type port = Yosys_atd_t.port = { direction: direction; bits: bits }
-
-type dyn = Yojson.Safe.json
 
 type param_value = Yosys_atd_t.param_value
 
@@ -36,6 +36,18 @@ type modl = Yosys_atd_t.modl = {
 
 type t = Yosys_atd_t.t = { creator: string; modl: (string * modl) list }
 
+let write_dyn = (
+  Yojson.Safe.write_json
+)
+let string_of_dyn ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write_dyn ob x;
+  Bi_outbuf.contents ob
+let read_dyn = (
+  Yojson.Safe.read_json
+)
+let dyn_of_string s =
+  read_dyn (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write_direction = (
   fun ob sum ->
     match sum with
@@ -154,7 +166,7 @@ let direction_of_string s =
   read_direction (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write__1 = (
   Ag_oj_run.write_list (
-    Yojson.Safe.write_int
+    write_dyn
   )
 )
 let string_of__1 ?(len = 1024) x =
@@ -163,7 +175,7 @@ let string_of__1 ?(len = 1024) x =
   Bi_outbuf.contents ob
 let read__1 = (
   Ag_oj_run.read_list (
-    Ag_oj_run.read_int
+    read_dyn
   )
 )
 let _1_of_string s =
@@ -331,18 +343,6 @@ let read_port = (
 )
 let port_of_string s =
   read_port (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
-let write_dyn = (
-  Yojson.Safe.write_json
-)
-let string_of_dyn ?(len = 1024) x =
-  let ob = Bi_outbuf.create len in
-  write_dyn ob x;
-  Bi_outbuf.contents ob
-let read_dyn = (
-  Yojson.Safe.read_json
-)
-let dyn_of_string s =
-  read_dyn (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write_param_value = (
   write_dyn
 )
