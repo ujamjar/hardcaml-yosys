@@ -1,0 +1,5 @@
+*.swp
+*~
+yosys/
+test/sat_techlib/
+_build/

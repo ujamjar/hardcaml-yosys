@@ -9,19 +9,10 @@ exception Input_not_found of string
 exception Empty_bus
 exception Invalid_net_tristate
 exception Invalid_net_bit_specifier of string
-
+exception Expecting_memory_id
 module I = Map.Make(struct type t = int let compare = compare end)
 module S = Map.Make(struct type t = string let compare = compare end)
-
-type cell = 
-  {
-    typ : string;
-    label : string;
-    cell : Techlib.cell;
-    parameters : (string * Yosys_atd_t.param_value) list;
-    inputs : (string * Yosys_atd_t.bits) list;
-    outputs : (string * Yosys_atd_t.bits) list;
-  }
+module Y = Yosys_atd_t 
 
 type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t Techlib.assoc
 
@@ -37,8 +28,6 @@ let net_of_bit = function
     create wires and a map from bits (nets) to wires/indexes for module 
     inputs and cell outputs *)
 let modl_wire_map ports cells = 
-  let module Y = Yosys_atd_t in
-
   let map = List.fold_left (fun map (b,s) -> I.add b (0,s) map) I.empty 
     [ 0,Signal.Comb.gnd; 1,Signal.Comb.vdd ]
   in
@@ -77,22 +66,57 @@ let modl_wire_map ports cells =
   (* mapping to cell outputs *)
   let co, map = 
     map_with_list 
-      (fun map (_,x) -> map_with_smap map_of_bits map x.outputs) 
+      (fun map (_,x) -> map_with_smap map_of_bits map x.Cell.outputs) 
       map cells 
   in
 
   mi, co, map
 
-let load techlib t = 
-  let module Y = Yosys_atd_t in
+let celltyp (_,cell) = cell.Cell.typ 
+let memid (_,cell) = 
+  match List.assoc "MEMID" cell.Cell.parameters with
+  | `String s -> s
+  | _ -> raise Expecting_memory_id
+  | exception _ -> raise Expecting_memory_id
 
+let is_memrd cell = celltyp cell = "$memrd" 
+let is_memwr cell = celltyp cell = "$memwr" 
+let is_mem cell = is_memrd cell || is_memwr cell 
+
+(* extract memrd/memwr cells and sort by their ids XXX meminit *)
+let get_memory_cells cells = 
+  (* sort memories by id *)
+  let module M = Map.Make(String) in
+  let map = 
+    List.fold_left 
+      (fun map cell ->
+        if not (is_mem cell) then map
+        else
+          let memid = memid cell in
+          try 
+            let (r,w) = M.find memid map in
+            M.add memid (if is_memrd cell then ((cell::r),w) else (r,(cell::w))) map
+          with _ ->
+            M.add memid (if is_memrd cell then ([cell],[]) else ([],[cell])) map)
+      M.empty cells
+  in
+  M.bindings map
+  
+(* replace memrd/memwr with new techlbs cells implementing the appropriate
+   memory for each memid *)
+let convert_memories cells = 
+  let mems = get_memory_cells cells in
+  let mem_cells = List.iter (fun (memid, (rd,wr)) -> Memory.HardCaml.create ~rd ~wr) mems in
+  mem_cells
+
+let load_modl techlib (name,modl) = 
   (* find cell in the techlib *)
   let find_cell cell = 
     try List.assoc cell.Y.typ techlib
     with Not_found -> raise Y.(Cell_not_in_techlib(cell.typ, cell.attributes.src))
   in
 
-  (* get cell with explicit inputs and outputs *)
+  (* get cell with explicit inputs and outputs and map to techlib *)
   let mk_cell (inst_name,cell) = 
     let inputs, outputs = 
       List.partition (fun (n,b) ->
@@ -101,7 +125,7 @@ let load techlib t =
       cell.Y.connections
     in
     inst_name, {
-      typ = cell.Y.typ;
+      Cell.typ = cell.Y.typ;
       label = Y.(cell.attributes.src);
       cell = find_cell cell;
       parameters = cell.Y.parameters;
@@ -139,23 +163,22 @@ let load techlib t =
         concat @@ List.rev @@ List.map (fun (w,l,h) -> w.[h:l]) l
   in
 
-  let instantiate map cells co = 
-
-    List.iter2 (fun (cell_name,cell) co ->
-      
-      (* create parameters *)
-      let params = List.map (function
-        | name,`Int i -> name, Signal.Types.ParamInt i
-        | name, `String s -> name, Signal.Types.ParamString s
-        | name,_ -> raise (Unsupported_parameter_type(cell_name,name))) cell.parameters
-      in
-      (* create input busses *)
-      let inputs = List.map (fun (name,bits) -> name, get_bus map bits) cell.inputs in 
-      (* instantiate module *)
-      let outputs = cell.cell params inputs in 
-      (* connect outputs *)
-      List.iter (fun (n,o) -> S.find n co <== o) outputs) cells co
+  let instantiate_cell map (cell_name,cell) co = 
+    (* create parameters *)
+    let params = List.map (function
+      | name,`Int i -> name, Signal.Types.ParamInt i
+      | name, `String s -> name, Signal.Types.ParamString s
+      | name,_ -> raise (Unsupported_parameter_type(cell_name,name))) cell.Cell.parameters
+    in
+    (* create input busses *)
+    let inputs = List.map (fun (name,bits) -> name, get_bus map bits) cell.Cell.inputs in 
+    (* instantiate module *)
+    let outputs = cell.Cell.cell params inputs in 
+    (* connect outputs *)
+    List.iter (fun (n,o) -> S.find n co <== o) outputs
   in
+
+  let instantiate map cells co = List.iter2 (instantiate_cell map) cells co in
 
   (* connect together wires *)
   let connect_inputs inputs mi = 
@@ -172,26 +195,27 @@ let load techlib t =
 
   let load_modl modl =
     let cells = List.map mk_cell modl.Y.cells in
+    let _ = convert_memories cells in
     let mi,co,map = modl_wire_map modl.Y.ports cells in
     instantiate map cells co;
     mi,co,map
   in
 
-  List.map 
-    (fun (name,modl) ->
+  let is_input (n, (p : Y.port)) = p.Y.direction = `Input in
+  let is_output (n, (p : Y.port)) = p.Y.direction = `Output in
+  let inputs, outputs = List.partition is_input modl.Y.ports in
+  let port (n,(p : Y.port)) = n, List.length p.Y.bits in
+  let inputs, outputs = List.map port inputs, List.map port outputs in
 
-      let is_input (n, (p : Y.port)) = p.Y.direction = `Input in
-      let is_output (n, (p : Y.port)) = p.Y.direction = `Output in
-      let inputs, outputs = List.partition is_input modl.Y.ports in
-      let port (n,(p : Y.port)) = n, List.length p.Y.bits in
-      let inputs, outputs = List.map port inputs, List.map port outputs in
+  let create i = 
+    let mi, co, map = load_modl modl in
+    let outputs = List.filter is_output modl.Y.ports in
+    connect_inputs i mi;
+    collect_outputs map outputs
+  in
+  name, (inputs, outputs, create)
 
-      let create i = 
-        let mi, co, map = load_modl modl in
-        let outputs = List.filter is_output modl.Y.ports in
-        connect_inputs i mi;
-        collect_outputs map outputs
-      in
-      name, (inputs, outputs, create))
-    t.Y.modl
+let load techlib t = 
+  List.map (load_modl techlib) t.Y.modl
+
 

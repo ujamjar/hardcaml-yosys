@@ -11,11 +11,11 @@ This library can read the JSON netlist file and reconstruct the design in HardCa
 HardCaml does not support tri-state buffers in general.  Circuits 
 with tri-states will not work.
 
-Certain other featurs such as latches are not fully supported - in some
-cases code exists to generate verilog instantiations and this need extending
-(for example srlatch).
+Certain other features such as latches are not fully supported - 
+an external rtl module is instantiated instead (the design can be
+re-generated but not simulated).
 
-A few simlib primitives are still not supported in the techlib.  These
+Finally a few simlib primitives are not supported in the techlib.  These
 will be added as and when test examples are found.  Most importantly
 native memories are not supprted yet (though there is a workaround).
 
@@ -52,7 +52,7 @@ let convert json_file core_name =
   let o = fn (List.map (fun (n,b) -> n, input n b) i) in
 
   (* write back to verilog *)
-  let circuit = Circuit.make "mydesign" (List.map (fun (n,s) -> output n s) o) in
+  let circuit = Circuit.make core_name (List.map (fun (n,s) -> output n s) o) in
   Rtl.Verilog.write print_string circuit 
 
 let () = convert "design.json" "mytop"

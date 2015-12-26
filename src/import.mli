@@ -10,11 +10,10 @@ exception Invalid_net_bit_specifier of string
 module I : Map.S
 module S : Map.S
 
-type cell
 type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t Techlib.assoc
 
 val modl_wire_map : 
-  Yosys_atd_t.port Techlib.assoc -> cell Techlib.assoc ->
+  Yosys_atd_t.port Techlib.assoc -> Cell.t Techlib.assoc ->
   HardCaml.Signal.Comb.t S.t *
   HardCaml.Signal.Comb.t S.t list *
   (int * HardCaml.Signal.Comb.t) I.t

@@ -234,6 +234,31 @@ module Simlib : sig
     val get_output_width : int P.t -> int O.t
   end
 
+  module Memwr : sig
+    module P : interface PRIORITY CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
+    module I : interface EN CLK DATA ADDR end
+    module O : interface end
+    module W : module type of Wrapper(P)(I)(O)
+
+    val memwr : W.fn
+    val cells : W.fn list
+
+    val get_input_width : int P.t -> int I.t
+    val get_output_width : int P.t -> int O.t
+  end
+
+  module Memrd : sig
+    module P : interface TRANSPARENT CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
+    module I : interface EN CLK ADDR end
+    module O : interface DATA end
+    module W : module type of Wrapper(P)(I)(O)
+
+    val memrd : W.fn
+    val cells : W.fn list
+
+    val get_input_width : int P.t -> int I.t
+    val get_output_width : int P.t -> int O.t
+  end
 
   val cells : cell assoc
 

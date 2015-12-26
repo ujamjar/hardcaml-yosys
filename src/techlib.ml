@@ -481,6 +481,67 @@ module Simlib = struct
   (* module meminit = struct ... end *)
   (* module mem = struct ... end *)
 
+  module Memwr = struct
+    module P = interface PRIORITY CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
+    module I = interface EN CLK DATA ADDR end
+    module O = interface end
+    module W = Wrapper(P)(I)(O)
+    let get_input_width p = I.({ en = p.P.width; clk = 1; data = p.P.width; addr = p.P.abits })
+    let get_output_width p = O.(map snd t)
+    let memwr p i = 
+      let open I in
+      let memid = pstr p.P.memid in
+      let p = P.map (fun p -> try pint p with _ -> 0) p in
+      assert (width i.en = p.P.width);
+      assert (width i.clk = 1);
+      assert (width i.data = p.P.width);
+      assert (width i.addr = p.P.abits);
+      let p' = 
+        P.(to_list @@ 
+            { map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p with
+              memid = "MEMID", Signal.Types.ParamString memid })
+      in
+      let inst = 
+      Signal.Instantiation.(inst "memwr" 
+        p'
+        I.(to_list @@ map2 (fun (n,_) x -> n, x) t i)
+        O.(to_list @@ map2 (fun (n,_) x -> n, x) t (get_output_width p)))
+      in
+      O.(map (fun (n,_) -> inst#o n) t)
+    let memwr = "$memwr", memwr
+    let cells = [ memwr ]
+  end
+
+  module Memrd = struct
+    module P = interface TRANSPARENT CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
+    module I = interface EN CLK ADDR end
+    module O = interface DATA end
+    module W = Wrapper(P)(I)(O)
+    let get_input_width p = I.({ en = p.P.width; clk = 1; addr = p.P.abits })
+    let get_output_width p = O.({ data = p.P.width })
+    let memrd p i = 
+      let open I in
+      let memid = pstr p.P.memid in
+      let p = P.map (fun p -> try pint p with _ -> 0) p in
+      assert (width i.en = 1);
+      assert (width i.clk = 1);
+      assert (width i.addr = p.P.abits);
+      let p' = 
+        P.(to_list @@ 
+            { map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p with
+              memid = "MEMID", Signal.Types.ParamString memid })
+      in
+      let inst = 
+      Signal.Instantiation.(inst "memrd" 
+        p'
+        I.(to_list @@ map2 (fun (n,_) x -> n, x) t i)
+        O.(to_list @@ map2 (fun (n,_) x -> n, x) t (get_output_width p)))
+      in
+      O.(map (fun (n,_) -> inst#o n) t)
+    let memrd = "$memrd", memrd
+    let cells = [ memrd ]
+  end
+
   let cells = 
     (List.map Op1.W.wrapper Op1.cells) @
     (List.map Op2.W.wrapper Op2.cells) @
@@ -495,7 +556,9 @@ module Simlib = struct
     (List.map Dffe.W.wrapper Dffe.cells) @
     (List.map Dffsr.W.wrapper Dffsr.cells) @
     (List.map Adff.W.wrapper Adff.cells) @
-    (List.map Dlatch.W.wrapper Dlatch.cells) 
+    (List.map Dlatch.W.wrapper Dlatch.cells) @
+    (List.map Memwr.W.wrapper Memwr.cells) @
+    (List.map Memrd.W.wrapper Memrd.cells)
 
 end
 

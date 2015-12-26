@@ -1,8 +1,10 @@
 # OASIS_START
-# DO NOT EDIT (digest: d31507dfa376e2b410c3437eadaca976)
+# DO NOT EDIT (digest: c284f75a6be13b46513a8f28c665a5df)
 Yosys_atd_t
 Yosys_atd_j
 Io
 Techlib
+Cell
+Memory
 Import
 # OASIS_STOP

@@ -1,7 +1,7 @@
 # OASIS_START
-# DO NOT EDIT (digest: 87d08e1a45894975d0711942a9b63941)
-version = "1.1.1"
-description = "Hardware in OCaml"
+# DO NOT EDIT (digest: d922547764151dd057b5eb0554b6e267)
+version = "0.1.0"
+description = "Import Verilog designs into HardCaml"
 requires = "hardcaml atdgen"
 archive(byte) = "HardCamlYosys.cma"
 archive(byte, plugin) = "HardCamlYosys.cma"

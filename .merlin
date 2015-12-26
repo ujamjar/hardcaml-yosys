@@ -1,0 +1,4 @@
+B _build/**
+S src
+S test
+PKG hardcaml
