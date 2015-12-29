@@ -2,3 +2,5 @@ B _build/**
 S src
 S test
 PKG hardcaml
+PKG atdgen
+PKG yojson

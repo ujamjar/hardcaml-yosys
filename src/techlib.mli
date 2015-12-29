@@ -6,6 +6,9 @@ exception Invalid_input of string
 type 'a assoc = (string * 'a) list
 type cell = Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc
 
+val pint : Signal.Types.parameter -> int
+val pstr : Signal.Types.parameter -> string
+
 module Simlib : sig
 
   module Wrapper(P : Interface.S)(I : Interface.S)(O : Interface.S) : sig
@@ -260,6 +263,22 @@ module Simlib : sig
     val get_output_width : int P.t -> int O.t
   end
 
+  module Mem : sig
+    module P : interface 
+      ABITS INIT MEMID OFFSET SIZE WIDTH
+      RD_CLK_ENABLE RD_CLK_POLARITY RD_PORTS RD_TRANSPARENT 
+      WR_CLK_ENABLE WR_CLK_POLARITY WR_PORTS
+    end
+    module I : interface RD_ADDR RD_CLK RD_EN WR_ADDR WR_CLK WR_DATA WR_EN end
+    module O : interface RD_DATA end
+    module W : module type of Wrapper(P)(I)(O)
+
+    val mem : W.fn
+    val cells : W.fn list
+
+    val get_input_width : int P.t -> int I.t
+    val get_output_width : int P.t -> int O.t
+  end
   val cells : cell assoc
 
 end

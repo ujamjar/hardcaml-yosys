@@ -6,16 +6,16 @@ exception Invalid_input of string
 type 'a assoc = (string * 'a) list
 type cell = (Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc)
 
+let pint = function Signal.Types.ParamInt i -> i 
+                  | _ -> raise (Invalid_parameter "expecting int parameter")
+let pstr = function Signal.Types.ParamString s -> s 
+                  | _ -> raise (Invalid_parameter "expecting string parameter")
+
 module Simlib = struct
 
   open Signal.Comb
 
   let (^~:) a b = ~: (a ^: b)
-
-  let pint = function Signal.Types.ParamInt i -> i 
-                    | _ -> raise (Invalid_parameter "expecting int parameter")
-  let pstr = function Signal.Types.ParamString s -> s 
-                    | _ -> raise (Invalid_parameter "expecting string parameter")
 
   module Wrapper(P : Interface.S)(I : Interface.S)(O : Interface.S) : sig
     type fn = string * (Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
@@ -481,6 +481,7 @@ module Simlib = struct
   (* module meminit = struct ... end *)
   (* module mem = struct ... end *)
 
+  (* must use 'memory -dff' *)
   module Memwr = struct
     module P = interface PRIORITY CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
     module I = interface EN CLK DATA ADDR end
@@ -540,6 +541,55 @@ module Simlib = struct
       O.(map (fun (n,_) -> inst#o n) t)
     let memrd = "$memrd", memrd
     let cells = [ memrd ]
+  end
+
+  (* 'memory -nobram; opt; clean' *)
+  module Mem = struct
+    module P = interface 
+      ABITS INIT MEMID OFFSET SIZE WIDTH
+      RD_CLK_ENABLE RD_CLK_POLARITY RD_PORTS RD_TRANSPARENT 
+      WR_CLK_ENABLE WR_CLK_POLARITY WR_PORTS
+    end
+    module I = interface RD_ADDR RD_CLK RD_EN WR_ADDR WR_CLK WR_DATA WR_EN end
+    module O = interface RD_DATA end
+    module W = Wrapper(P)(I)(O)
+
+    let get_input_base_width p = 
+      I.({ rd_addr = p.P.abits; rd_clk = 1; rd_en = 1;
+           wr_addr = p.P.abits; wr_clk = 1; 
+           wr_data = p.P.width; wr_en = p.P.width })
+    let get_input_ports p = 
+      I.({ rd_addr = p.P.rd_ports; rd_clk = p.P.rd_ports; rd_en = p.P.rd_ports;
+           wr_addr = p.P.wr_ports; wr_clk = p.P.wr_ports; 
+           wr_data = p.P.wr_ports; wr_en = p.P.wr_ports })
+    let get_input_width p = I.(map2 ( * ) (get_input_base_width p) (get_input_ports p))
+
+    let get_output_base_width p = O.({ rd_data = p.P.width })
+    let get_output_ports p = O.({ rd_data = p.P.rd_ports })
+    let get_output_width p = O.(map2 ( * ) (get_output_base_width p) (get_output_ports p))
+
+    let i_to_arrays p i = 
+      let bwidth = get_input_base_width p in
+      let ports = get_input_ports p in
+      let zip = I.(map2 (fun a b -> a,b)) in
+      let to_array x (ports,bwidth) =
+        assert (width x = (ports * bwidth));
+        Array.init ports (fun j -> 
+          let l = j * bwidth in
+          select x (l+bwidth-1) l)
+      in
+      I.(map2 to_array i (zip ports bwidth))
+
+    let o_of_arrays o = O.map (fun o -> concat @@ List.rev @@ Array.to_list o) o
+
+    let mem p i = 
+      let memid = pstr p.P.memid in
+      let p = P.map (fun p -> try pint p with _ -> 0) p in
+      let i = i_to_arrays p i in
+      O.{ rd_data = zero (p.P.rd_ports * p.P.width) }
+
+    let mem = "$mem", mem
+    let cells = [ mem ]
   end
 
   let cells = 

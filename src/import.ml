@@ -106,8 +106,9 @@ let get_memory_cells cells =
    memory for each memid *)
 let convert_memories cells = 
   let mems = get_memory_cells cells in
-  let mem_cells = List.iter (fun (memid, (rd,wr)) -> Memory.HardCaml.create ~rd ~wr) mems in
-  mem_cells
+  let mem_cells = List.map (fun (memid, (rd,wr)) -> Memory.HardCaml.create ~rd ~wr) mems in
+  let cells = List.filter (fun cell -> not (is_mem cell)) cells in
+  mem_cells @ cells
 
 let load_modl techlib (name,modl) = 
   (* find cell in the techlib *)
@@ -195,7 +196,7 @@ let load_modl techlib (name,modl) =
 
   let load_modl modl =
     let cells = List.map mk_cell modl.Y.cells in
-    let _ = convert_memories cells in
+    let cells = convert_memories cells in
     let mi,co,map = modl_wire_map modl.Y.ports cells in
     instantiate map cells co;
     mi,co,map

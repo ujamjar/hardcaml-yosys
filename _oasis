@@ -28,3 +28,13 @@ Executable convert
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml,hardcaml-yosys
+
+Executable mram
+  Path:               test
+  MainIs:             mram.ml
+  Build:              true
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml,hardcaml.syntax,hardcaml-yosys,hardcaml-waveterm.lterm
+
