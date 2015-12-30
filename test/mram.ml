@@ -12,15 +12,30 @@ module type Cfg = sig
   val spec : Types.register
 end
 
+module Wr = interface
+  we wa d
+end
+
+module Rd = interface
+  re ra
+end
+
+module Ports(C : Cfg) = struct
+  module Wr = struct
+    include Wr 
+    let bits = { we = 1; wa = C.abits; d = C.dbits }
+    let t = map2 (fun (n,_) b -> n,b) t bits
+  end
+  module Rd = struct
+    include Rd 
+    let bits = { re = 1; ra = C.abits }
+    let t = map2 (fun (n,_) b -> n,b) t bits
+  end
+end
+
 module Memory_regs(C : Cfg) : sig
   
-  module Wr : interface
-    we wa d
-  end
-
-  module Rd : interface
-    re ra
-  end
+  include module type of Ports(C)
 
   val memory_nwr_nrd : wr:t Wr.t array -> rd:t Rd.t array -> fallthrough:bool array -> t array
 
@@ -30,13 +45,7 @@ end = struct
 
   open C
 
-  module Wr = interface
-    we[1] wa[abits] d[dbits]
-  end
-
-  module Rd = interface
-    re[1] ra[abits]
-  end
+  include Ports(C)
 
   open Wr
   open Rd
@@ -71,106 +80,59 @@ end = struct
 
 end
 
-module Rand(C : Cfg) = struct
-end
+module Lvt(C : Cfg) = struct
 
-(*
-module Multiram = struct
-  (* XXX can't remember if I tested this properly... *)
-  open Comb
+  include Ports(C)
+  open Wr
+  open Rd
 
-  let rec bin2oh s = 
-    let (&::) a b = repeat a (width b) &: b in
-    if width s = 1 then s @: ~: s 
-    else 
-        ((((msb s)) &:: bin2oh (lsbs s)) @: 
-      ((~: (msb s)) &:: bin2oh (lsbs s)))
+  let memory_nrd ~wr ~rd ~fallthrough = 
+    let nrd = Array.length rd in
+    Array.init nrd (fun i ->
+      let ram = if fallthrough.(i) then Seq.ram_wbr else Seq.ram_rbw in 
+      let rd = rd.(i) in
+      ram ~spec:C.spec ~size:C.size
+        ~we:wr.we ~wa:wr.wa ~d:wr.d 
+        ~re:rd.re ~ra:rd.ra) 
 
+  let memory_nwr_nrd ~wr ~rd ~fallthrough = 
+    let nwr, nrd = Array.length wr, Array.length rd in
+    assert (Array.length fallthrough = nrd);
 
-  let rec oh2bin s = 
-    let pairs s = 
-      let s = if width s mod 2 = 0 then s else gnd @: s in
-      let b = List.rev (bits s) in
-      Utils.zip (Utils.leven b) (Utils.lodd b)
+    (* create the live value table *)
+    let module Lvt_cfg = struct
+      let abits = C.abits
+      let dbits = Utils.clog2 nwr
+      let size = C.size
+      let spec = C.spec
+    end in
+    let module Lvt = Memory_regs(Lvt_cfg) in
+    let lvt = 
+      if nwr = 1 then [||]
+      else
+        let lvt_wr = Array.init nwr (fun i -> { wr.(i) with d = consti Lvt_cfg.dbits i; }) in
+        let lvt_rd = Array.init nrd (fun i -> 
+          { rd.(i) with ra = 
+              if fallthrough.(i) then Seq.reg C.spec rd.(i).re rd.(i).ra else rd.(i).ra 
+          })
+        in
+        let lvt = Lvt.memory_nwr_nrd ~wr:lvt_wr ~rd:lvt_rd ~fallthrough:(Array.make nrd false) in
+        Array.init nrd (fun i -> 
+          if fallthrough.(i) then lvt.(i)
+          else Seq.reg C.spec rd.(i).re lvt.(i)) 
     in
-    let enc2_1 (a, b) = (b, a |: b) in
-    if width s = 1 then gnd
-    else if width s = 2 then bit s 1
-    else
-      let s, p = Utils.unzip (List.map enc2_1 (pairs s)) in
-      oh2bin (concat (List.rev p)) @: reduce (|:) s
 
-  let rec oh2bin_p s = 
-    let w = width s in
-    let l = Utils.nbits (w-1) in
-    let rec f b i = 
-      match b with
-      | [] -> empty (* shouldnt get here *)
-      | h::[] -> consti l i
-      | h::t -> mux2 h (consti l i) (f t (i+1))
-    in
-    f (List.rev (bits s)) 0
+    (* create the memory banks *)
+    let mem = Array.init nwr (fun i -> memory_nrd ~wr:wr.(i) ~rd ~fallthrough) in
 
-  (* lvt multiport ram *)
-
-  type 'a write = 
-    {
-      we : 'a;
-      wd : 'a;
-      wa : 'a;
-    }
-  type 'a read = 
-    {
-      re : 'a;
-      ra : 'a;
-    }
-  type ram = size:int -> we:t -> wa:t -> d:t -> re:t -> ra:t -> t
-
-  let get_ram = function
-    | `rbw -> Seq.ram_rbw
-    | `wbr -> Seq.ram_wbr
-    | `async -> (fun ~size ~spec ~we ~wa ~d ~re ~ra -> Seq.memory ~size ~spec ~we ~w:wa ~d ~r:ra)
-
-  let ram_1wr ~ram ~size ~wr ~rd = 
-    (* 1 write, n read ports *)
-    Array.map 
+    (* select the correct memory bank *)
+    Array.init nrd 
       (fun rd ->
-        (get_ram ram) ~size 
-          ~we:wr.we ~wa:wr.wa ~d:wr.wd 
-          ~re:rd.re ~ra:rd.ra) rd
-
-  let reg_seethru spec we d = 
-    mux2 we d (Seq.reg spec we d)
-
-  let lvt ~priority_write ~size ~spec ~wr ~rd = 
-    let n_wr, n_rd = Array.length wr, Array.length rd in
-    let bin2oh we s = Array.map ((&:) we) (Array.of_list (List.rev (bits (bin2oh s)))) in
-    let we1h = Array.map (fun wr -> bin2oh wr.we wr.wa) wr in
-    let regs = Array.init size (fun i -> 
-      let wes = Array.init n_wr (fun j -> we1h.(j).(i)) in
-      let we = reduce (|:) (Array.to_list wes) in
-      let oh2bin = if priority_write then oh2bin_p else oh2bin in
-      let d = oh2bin (concat (List.rev (Array.to_list wes))) in
-      reg_seethru spec we d)
-    in
-    let regs = Array.to_list regs in
-    Array.map (fun rd -> mux rd.ra regs) rd
-
-  let ram ?(priority_write=false) ~ram ~size ~spec ~wr ~rd = 
-    let n_wr, n_rd = Array.length wr, Array.length rd in
-    let banks = Array.map (fun wr -> ram_1wr ~ram ~size ~wr ~rd) wr in
-    let lvt = lvt ~priority_write ~size ~spec ~wr ~rd in
-    let lvt = Array.init n_rd (fun i -> Seq.reg spec rd.(i).re lvt.(i)) in
-
-    Array.init n_rd (fun i -> mux lvt.(i) 
-      (Array.to_list (Array.init n_wr (fun j -> banks.(j).(i))))) 
+        let mem = Array.init nwr (fun wr -> mem.(wr).(rd)) in
+        if nwr = 1 then mem.(0) 
+        else mux lvt.(rd) (Array.to_list mem))
 
 end
-*)
-(*module Seq = Make_seq(struct
-  let ram_spec = Seq.r_none
-  let reg_spec = Seq.r_none
-end)*)
 
 module B = Bits.Comb.IntbitsList
 module Cs = Cyclesim.Make(B)
@@ -180,128 +142,76 @@ module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B)
 module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
 module Waveterm_ui = HardCamlWaveLTerm.Ui.Make(B)(Waveterm_waves)
 
-let testbench_mram () = 
+(* configuration *)
 
-  let abits = 4 in
-  let dbits = 8 in
-  let nrd = 4 in
-  let nwr = 4 in
-  let rbw = false in
+let n_cycles = ref 1000
+let abits = ref 4
+let dbits = ref 8
+let nwr = ref 2
+let nrd = ref 2
+let lvt = ref true
+let random_re = ref true
+let all_fall = ref false
+let none_fall = ref false
 
-  let mk_rd_port n = 
-    let n s = s ^ string_of_int n in
-    {
-      Multiram.ra = input (n "ra") abits;
-      re = input (n "re") 1
-    }
-  in
-  let mk_wr_port n = 
-    let n s = s ^ string_of_int n in
-    {
-      Multiram.wa = input (n "wa") abits;
-      we = input (n "we") 1;
-      wd = input (n "wd") dbits;
-    }
-  in
-  (*let q = 
-    (if rbw then Seq.multi_ram_rbw else Seq.multi_ram_wbr)
-      ~rd:(Array.init nrd mk_rd_port)
-      ~wr:(Array.init nwr mk_wr_port)
-      (1 lsl abits)*)
-  let q = 
-    Multiram.ram
-      ?priority_write:None
-      ~ram:((if rbw then Seq.ram_rbw else Seq.ram_wbr) ~spec:Seq.r_none)
-      ~size:(1 lsl abits)
-      ~spec:Seq.r_none
-      ~wr:(Array.init nwr mk_wr_port)
-      ~rd:(Array.init nrd mk_rd_port)
-  in
-  let circ = Circuit.make "mram"
-    (Array.to_list @@ Array.mapi (fun j s -> output ("q" ^ string_of_int j) s) q)
-  in
-  (*let () = Rtl.Verilog.write print_string circ*)
-  let sim = Cs.make circ in
-  let sim,waves = Waveterm_sim.wrap sim in
+let _ = Arg.(parse [
+  "-n", Set_int(n_cycles), "Number of cycles to simulate (default: 1000)";
+  "-a", Set_int(abits), "address bits (default: 4)";
+  "-d", Set_int(dbits), "data bits (default: 8)";
+  "-rd", Set_int(nrd), "read ports (default: 2)";
+  "-wr", Set_int(nwr), "write ports (default: 2)";
+  (*"-regs", Clear(lvt), "build async register based memory (default: lvt)";*)
+  "-no-re", Clear(random_re), "disable random read-enable toggling (default: false)";
+  "-fallthrough", Set(all_fall), "Put all ports in fallthrough mode (default: alternate)";
+  "-no-fallthrough", Set(none_fall), "Put all ports in non-fallthrough mode (default: alternate)";
+] (fun _ -> failwith "invalid anon arg")
+"LVT Multiport Memory Testbench.
 
-  let rd = Array.init nrd (fun j ->
-    let n s = s ^ string_of_int j in
-    {
-      Multiram.ra = S.in_port sim (n "ra");
-      re = S.in_port sim (n "re");
-    })
-  in
+Builds memories with N read/M write ports from simpler 1 read/1 write 
+port memories (as available in FPGAs).  Requires N*M base memories 
+plus a so called Live Value Table to directs reads to the most
+recently accessed write data.
 
-  let wr = Array.init nwr (fun j ->
-    let n s = s ^ string_of_int j in
-    {
-      Multiram.wa = S.in_port sim (n "wa");
-      we = S.in_port sim (n "we");
-      wd = S.in_port sim (n "wd");
-    })
-  in
+Each port may be set independantly in read-before-write or 
+write-before-read mode (by default the testbench alternates port 
+modes).
 
-  let read (port, addr) = begin
-    let open Multiram in
-    rd.(port).re := B.vdd;
-    rd.(port).ra := B.consti abits addr;
-  end in
-
-  let write (port, addr, data) = begin
-    let open Multiram in
-    wr.(port).we := B.vdd;
-    wr.(port).wa := B.consti abits addr;
-    wr.(port).wd := B.consti dbits data;
-  end in
-
-  let cycle n = begin
-    let open Multiram in
-    for i=0 to n-1 do
-      S.cycle sim;
-      for port=0 to nrd-1 do rd.(port).re := B.gnd done;
-      for port=0 to nwr-1 do wr.(port).we := B.gnd done
-    done
-  end in
-
-  let testbench = begin
-    Array.iter write [| 0,0,1; 1,1,3; 2,2,7; 3,3,15 |];
-    Array.iter read [| 0,0; 1,1; 2,2; 3,3 |];
-    cycle 1;
-    Array.iter write [| 0,1,9 |];
-    Array.iter read [| 0,0; 1,1; 2,2; 3,3 |];
-    cycle 1;
-    Array.iter read [| 0,0; 1,1; 2,2; 3,3 |];
-    cycle 3;
-  end in
-
-  Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves })) 
+For testing the read-enable port may be held constant.
+")
 
 let testbench_mem_regs () = 
 
   let module C = struct
-    let abits = 4 
-    let dbits = 8 
-    let size = 16
+    let abits = !abits
+    let dbits = !dbits
+    let size = (1 lsl abits)
     let spec = Seq.r_none
   end in
-  let nwr = 2 in
-  let nrd = 2 in
-  let fallthrough = [| false; true |] in
+  let nwr = !nwr in
+  let nrd = !nrd in
+  let fallthrough = Array.init nrd (fun i -> 
+    if !all_fall then true
+    else if !none_fall then false
+    else i mod 2 = 1) in
+  let lvt = !lvt in
+  let random_re = !random_re in
 
   let module M = Memory_regs(C) in
+  let module L = Lvt(C) in
   let aname m n = n ^ string_of_int m in
   let mk_input m (n,b) = input (aname m n) b in
-  let q = M.memory_nwr_nrd
-    ~wr:(Array.init nwr (fun m -> M.Wr.(map (mk_input m) t)))
-    ~rd:(Array.init nrd (fun m -> M.Rd.(map (mk_input m) t)))
-    ~fallthrough
-  in
+  let wr = Array.init nwr (fun m -> M.Wr.(map (mk_input m) t)) in
+  let rd = Array.init nrd (fun m -> M.Rd.(map (mk_input m) t)) in
+  let q = (if lvt then L.memory_nwr_nrd else M.memory_nwr_nrd) ~wr ~rd ~fallthrough in
   let qi = Array.init nrd (fun m -> input (aname m "qi") C.dbits) in
+  let reg_qr m = Seq.reg C.spec (if fallthrough.(m) then vdd else rd.(m).M.Rd.re) qi.(m) in
+  let qr = Array.init nrd (if lvt then reg_qr else (fun m -> qi.(m))) in
   let qs = Array.init nrd (fun m -> 
     output (aname m "q") q.(m), 
-    output (aname m "qr") qi.(m)) 
+    output (aname m "qr") qr.(m))
   in
-  let check = Array.mapi (fun m (q,qr) -> output (aname m "check") (q ==: qr)) qs in
+  let check = Array.map (fun (q,qr) -> (q ==: qr)) qs in
+  let check = Array.mapi (fun m -> output (aname m "check")) check in
   let outputs = 
     (Array.to_list @@ Array.map fst qs) @
     (Array.to_list @@ Array.map snd qs) @
@@ -333,7 +243,11 @@ let testbench_mem_regs () =
   (* random reads and writes *)
   let rand (_,b) = b, Random.int (1 lsl b) in
   let rand_wr () = M.Wr.(map rand t) in
-  let rand_rd () = M.Rd.(map rand t) in
+  let rand_rd () = 
+    if random_re then M.Rd.(map rand t) 
+    else
+      M.Rd.{ map rand t with re = 1, 1 } 
+  in
 
   (* implement the reads and writes *)
   let ref_mem = Array.init C.size (fun _ -> 0) in
@@ -346,10 +260,16 @@ let testbench_mem_regs () =
     if wr.M.Wr.we = 1 then 
       ref_mem.(wr.M.Wr.wa) <- wr.M.Wr.d
   in
+  let prev_ra = Array.make nrd 0 in
   let update_read i rd = 
-    let rd = M.Rd.({ map snd rd with M.Rd.re = 1 }) in
-    if rd.M.Rd.re = 1 then 
-      qi.(i) := B.consti C.dbits ref_mem.(rd.M.Rd.ra)
+    (*let rd = M.Rd.({ map snd rd with M.Rd.re = 1 }) in*)
+    let rd = M.Rd.(map snd rd) in
+    if rd.M.Rd.re = 1 then begin
+      qi.(i) := B.consti C.dbits ref_mem.(rd.M.Rd.ra);
+      prev_ra.(i) <- rd.M.Rd.ra
+    end else if fallthrough.(i) then begin
+      qi.(i) := B.consti C.dbits ref_mem.(prev_ra.(i))
+    end
   in
 
   let perform_reads ft = 
@@ -370,7 +290,7 @@ let testbench_mem_regs () =
     done;
   in
 
-  for i=0 to 1000 do
+  for i=1 to !n_cycles do
     perform_reads false; (* non-fallthrough reads *)
     perform_writes (); (* all writes (last takes priority) *)
     perform_reads true; (* fallthrough reads *)
