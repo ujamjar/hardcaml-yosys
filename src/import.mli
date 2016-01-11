@@ -18,6 +18,15 @@ val modl_wire_map :
   HardCaml.Signal.Comb.t S.t list *
   (int * HardCaml.Signal.Comb.t) I.t
 
-val load : Techlib.cell Techlib.assoc -> Yosys_atd_t.t -> 
+val black_box_of_cell : Yosys_atd_t.cell -> Techlib.cell
+
+val load : 
+  (* allow black boxes *)
+  ?blackbox:bool ->
+  (* techlib *)
+  string list * Techlib.cell Techlib.assoc -> 
+  (* design(s) *)
+  Yosys_atd_t.t -> 
+  (* construction *)
   (int Techlib.assoc * int Techlib.assoc * create_fn) Techlib.assoc
 

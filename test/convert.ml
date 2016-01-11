@@ -3,6 +3,7 @@
 let json = ref ""
 let typ = ref "verilog"
 let core = ref ""
+let bbox = ref false
 
 let () = 
   Arg.parse [
@@ -12,6 +13,7 @@ let () =
       | "verilog" | "vlog" -> typ:="verilog"
       | "vhdl" -> typ:="vhdl"
       | _ -> failwith "invalid type"), "output file type (verilog or vhdl)";
+    "-b", Arg.Set(bbox), "allow generation of black boxes";
   ] (fun _ -> failwith "anon args not allowed") "yosys json convert"
 
 
@@ -21,7 +23,7 @@ open HardCamlYosys
 let load name = 
 
   let circ = Io.read (open_in name) in
-  let fns = Import.load Techlib.Simlib.cells circ in
+  let fns = Import.load ~blackbox:!bbox Techlib.Simlib.cells circ in
   let (n,(i,_,f)) =
     if !core="" then List.hd fns
     else !core, List.assoc !core fns 

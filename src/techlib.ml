@@ -451,28 +451,6 @@ module Simlib = struct
     let get_output_width p = O.({ q = p.P.width })
   end
 
-  module Dlatch = struct
-    module P = interface WIDTH EN_POLARITY end
-    module I = interface EN D end
-    module O = interface Q end
-    module W = Wrapper(P)(I)(O)
-    let get_input_width p = I.({ en = 1; d = p.P.width })
-    let get_output_width p = O.({ q = p.P.width })
-    let dlatch p i = 
-      let open I in
-      let p = P.map pint p in
-      assert (width i.d = p.P.width);
-      let inst = 
-      Signal.Instantiation.(inst "dlatch" 
-        P.(to_list @@ map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p)
-        I.(to_list @@ map2 (fun (n,_) x -> n, x) t i)
-        O.(to_list @@ map2 (fun (n,_) x -> n, x) t (get_output_width p)))
-      in
-      O.(map (fun (n,_) -> inst#o n) t)
-    let dlatch = "$dlatch", dlatch
-    let cells = [ dlatch ]
-  end
-  
   (* module dlatchsr = struct ... end *)
   (* module fsm = struct ... end *)
 
@@ -592,7 +570,7 @@ module Simlib = struct
     let cells = [ mem ]
   end
 
-  let cells = 
+  let cells' = 
     (List.map Op1.W.wrapper Op1.cells) @
     (List.map Op2.W.wrapper Op2.cells) @
     (List.map Fa.W.wrapper Fa.cells) @
@@ -606,9 +584,17 @@ module Simlib = struct
     (List.map Dffe.W.wrapper Dffe.cells) @
     (List.map Dffsr.W.wrapper Dffsr.cells) @
     (List.map Adff.W.wrapper Adff.cells) @
-    (List.map Dlatch.W.wrapper Dlatch.cells) @
     (List.map Memwr.W.wrapper Memwr.cells) @
     (List.map Memrd.W.wrapper Memrd.cells)
+
+  let black_boxes = [
+    "shfitx"; "macc"; "div"; "mod"; "pow";
+    "alu"; "tribuf"; "assert"; "assume"; "equiv";
+    "sr"; "dlatch"; "dlatchsr"; 
+    "memrd"; "memwr"; "meminit"; "mem";
+  ]
+
+  let cells = black_boxes, cells'
 
 end
 

@@ -16,7 +16,7 @@ Library HardCamlYosys
   Path:          src
   Findlibname:   hardcaml-yosys
   Pack:          true
-  Modules:       Yosys_atd_t, Yosys_atd_j, Io, Techlib, Cell, Memory, Import
+  Modules:       Yosys_atd_t, Yosys_atd_j, Io, Lvt, Techlib, Cell, Memory, Import
   BuildDepends:  hardcaml.syntax, atdgen
   XMETARequires: hardcaml, atdgen
 

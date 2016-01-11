@@ -224,19 +224,6 @@ module Simlib : sig
     val get_output_width : int P.t -> int O.t
   end
 
-  module Dlatch : sig
-    module P : interface WIDTH EN_POLARITY end
-    module I : interface EN D end
-    module O : interface Q end
-    module W : module type of Wrapper(P)(I)(O)
-
-    val dlatch : W.fn
-    val cells : W.fn list
-
-    val get_input_width : int P.t -> int I.t
-    val get_output_width : int P.t -> int O.t
-  end
-
   module Memwr : sig
     module P : interface PRIORITY CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
     module I : interface EN CLK DATA ADDR end
@@ -279,7 +266,9 @@ module Simlib : sig
     val get_input_width : int P.t -> int I.t
     val get_output_width : int P.t -> int O.t
   end
-  val cells : cell assoc
+
+  (* basic yosys tech library *)
+  val cells : string list * cell assoc
 
 end
 

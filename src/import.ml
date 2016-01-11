@@ -110,21 +110,51 @@ let convert_memories cells =
   let cells = List.filter (fun cell -> not (is_mem cell)) cells in
   mem_cells @ cells
 
-let load_modl techlib (name,modl) = 
+let partition_ios cell = 
+  List.partition (fun (n,b) ->
+    try List.assoc n cell.Y.port_directions = `Input
+    with Not_found -> raise (No_cell_direction_specified(cell.Y.typ, n)))
+  cell.Y.connections
+
+let mk_params cell_name parameters = 
+  List.map (function
+    | name,`Int i -> name, Signal.Types.ParamInt i
+    | name, `String s -> name, Signal.Types.ParamString s
+    | name,_ -> raise (Unsupported_parameter_type(cell_name,name))) parameters
+
+(* create black box for cell *)
+let black_box_of_cell cell  = 
+  let module E = struct exception SmellyDog end in
+  let _, outputs = partition_ios cell in
+  let f p i = 
+    let inst = Signal.Instantiation.inst cell.Y.typ p i
+      (List.map (fun (n,b) -> n, List.length b) outputs)
+    in
+    List.map (fun (n,_) -> n, inst#o n) outputs
+  in
+  f
+
+let load_modl blackbox (black_boxes,techlib) (name,modl) = 
+  let bbmap = List.fold_left (fun map m -> S.add ("$"^m) m map) S.empty black_boxes in
+
   (* find cell in the techlib *)
   let find_cell cell = 
-    try List.assoc cell.Y.typ techlib
-    with Not_found -> raise Y.(Cell_not_in_techlib(cell.typ, cell.attributes.src))
+    (* match the cell in the techlib *)
+    match List.assoc cell.Y.typ techlib with
+    | cell -> cell
+    | exception Not_found -> begin
+      (* could be a blackbox cell from the techlib *)
+      match S.find cell.Y.typ bbmap with
+      | n -> black_box_of_cell { cell with Y.typ = n }
+      (* otherwise pure blackbox, if allowed *)
+      | exception Not_found when blackbox -> black_box_of_cell cell
+      | exception Not_found -> raise Y.(Cell_not_in_techlib(cell.typ, cell.attributes.src))
+    end
   in
 
   (* get cell with explicit inputs and outputs and map to techlib *)
   let mk_cell (inst_name,cell) = 
-    let inputs, outputs = 
-      List.partition (fun (n,b) ->
-        try List.assoc n cell.Y.port_directions = `Input
-        with Not_found -> raise (No_cell_direction_specified(cell.Y.typ, n)))
-      cell.Y.connections
-    in
+    let inputs, outputs = partition_ios cell in
     inst_name, {
       Cell.typ = cell.Y.typ;
       label = Y.(cell.attributes.src);
@@ -166,11 +196,7 @@ let load_modl techlib (name,modl) =
 
   let instantiate_cell map (cell_name,cell) co = 
     (* create parameters *)
-    let params = List.map (function
-      | name,`Int i -> name, Signal.Types.ParamInt i
-      | name, `String s -> name, Signal.Types.ParamString s
-      | name,_ -> raise (Unsupported_parameter_type(cell_name,name))) cell.Cell.parameters
-    in
+    let params = mk_params cell_name cell.Cell.parameters in
     (* create input busses *)
     let inputs = List.map (fun (name,bits) -> name, get_bus map bits) cell.Cell.inputs in 
     (* instantiate module *)
@@ -216,7 +242,7 @@ let load_modl techlib (name,modl) =
   in
   name, (inputs, outputs, create)
 
-let load techlib t = 
-  List.map (load_modl techlib) t.Y.modl
+let load ?(blackbox=true) techlib t = 
+  List.map (load_modl blackbox techlib) t.Y.modl
 
 

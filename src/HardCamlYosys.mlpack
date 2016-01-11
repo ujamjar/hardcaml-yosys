@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: c284f75a6be13b46513a8f28c665a5df)
+# DO NOT EDIT (digest: 5d20c8e56971e05df64c8465422df9d5)
 Yosys_atd_t
 Yosys_atd_j
 Io
+Lvt
 Techlib
 Cell
 Memory

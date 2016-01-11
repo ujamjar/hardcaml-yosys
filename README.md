@@ -11,13 +11,58 @@ This library can read the JSON netlist file and reconstruct the design in HardCa
 HardCaml does not support tri-state buffers in general.  Circuits 
 with tri-states will not work.
 
-Certain other features such as latches are not fully supported - 
-an external rtl module is instantiated instead (the design can be
-re-generated but not simulated).
+A few simlib primitives are not supported in the techlib.  These
+either wont work in HardCaml (ie latches) or have yet to be implemented.
+In these cases a blackbox module is generated (the implementation of 
+which can be taken from the yosys simlib).
 
-Finally a few simlib primitives are not supported in the techlib.  These
-will be added as and when test examples are found.  Most importantly
-native memories are not supprted yet (though there is a workaround).
+|Status              | Modules | 
+|--------------------|---------|
+| to do              | sr, shiftx, macc, alu, mem |
+| bbox only          | dlatch, dlatchsr |
+| no support planned | tribuf, div, mod, pow, memwr, memrd, meminit, assert, assume, equiv |
+
+### Memories
+
+Yosys can represent memories in a variety of ways
+
+1. Synthesized into technology primitives (ie Xilinx block RAM)  `Supported by black boxes`
+2. Converted to registers and muxes `fully supported`
+3. As a $mem cell `supported with some limitations`
+4. As a combination of $memwr, $memrd and $meminit cells `not supported`
+
+The 2nd option is quite general and should be usable in most cases.  That said the
+netlist will now implement all memories as registers so the design - as HardCaml sees it -
+may not be very efficient.  Uses the following command in yosys.
+
+```
+yosys> memory -dff
+```
+
+The third option will attempt to keep memories, but implement them using HardCaml
+memory primitives.  HardCaml generally only supports memories with one read and one
+write port whereas in general we need to support multi-port memories with 
+
+* N read ports
+* M write ports
+* Each write port may be in a different clock domain
+* Each read port may be in a different clock domain
+* Each read port may be synchronous or asynchronous
+* Each read port may be read-before-write or write-before-read (also called fallthrough).
+
+To support yosys we use a construction called a [LVT multi-port memory](http://fpgacpu.ca/multiport)
+which builds more general memory structures from simpler single port memories.  The following
+limitations are known
+
+1. We only support 1 write clock domain
+2. read-before-write and write-before-read behaviour only really makes sense if the read and
+   write clocks are in the same clock domain.
+
+In yosys use;
+
+```
+yosys> memory -nobram; opt; clean
+```
 
 ### Example
 
