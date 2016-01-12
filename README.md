@@ -18,8 +18,8 @@ which can be taken from the yosys simlib).
 
 |Status              | Modules | 
 |--------------------|---------|
-| to do              | sr, shiftx, fsm, macc, alu, mem |
-| bbox only          | dlatch, dlatchsr |
+| to do              | shiftx, fsm, macc, alu |
+| bbox only          | sr, dlatch, dlatchsr |
 | no support planned | tribuf, div, mod, pow, memwr, memrd, meminit, assert, assume, equiv |
 
 ### Memories
@@ -57,6 +57,7 @@ limitations are known
 1. only supports 1 write clock domain
 2. read-before-write and write-before-read behaviour only really makes sense if the read and
    write clocks are in the same clock domain.
+3. Memory initialisation is not supported.
 
 In yosys use;
 
@@ -68,16 +69,24 @@ yosys> memory -nomap; opt; clean
 
 #### Yosys usage
 
+A simple design with a single module may be converted with;
+
 ```
 yosys> read_verilog design.v;     # load design
 yosys> hierarchy; proc; flatten;  # structural conversion
 yosys> write_json design.json     # write json netlist
 ```
 
-In designs with multiple modules you may require `hierarchy -top <top_module_name>`.
+In larger designs with multiple modules and/or memories this might be extended to;
 
-The `memory` pass is useful to convert memories to basic cells (registers and address
-decoders).
+```
+yosys> read_verilog design.v       # load design
+yosys> hierarchy -top <top_module> # select top level module
+yosys> proc; flatten               # structural conversion
+yosys> memory -nomap               # convert memories
+yosys> opt -mux_undef; clean       # tidy up netlist
+yosys> write_json design.json      # write json netlist
+```
 
 #### HardCaml usage
 
