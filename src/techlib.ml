@@ -4,7 +4,7 @@ exception Invalid_parameter of string
 exception Invalid_input of string
 
 type 'a assoc = (string * 'a) list
-type cell = (Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc)
+type cell = Signal.Types.parameter assoc -> Signal.Comb.t assoc -> Signal.Comb.t assoc
 
 let pint = function Signal.Types.ParamInt i -> i 
                   | _ -> raise (Invalid_parameter "expecting int parameter")
@@ -18,15 +18,15 @@ module Simlib = struct
   let (^~:) a b = ~: (a ^: b)
 
   module Wrapper(P : Interface.S)(I : Interface.S)(O : Interface.S) : sig
-    type fn = string * (Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
-    val wrapper : fn -> string * cell
+    type fn = string * (Cell.t -> Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
+    val wrapper : fn -> string * (Cell.t -> cell)
   end = struct
-    type fn = string * (Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
+    type fn = string * (Cell.t -> Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
     let of_list_p l = P.map (fun (n,_) -> List.assoc n l) P.t 
     let of_list_i l = I.map (fun (n,_) -> List.assoc n l) I.t 
     let to_list_o o = O.to_list @@ O.map2 (fun (n,_) x -> n,x) O.t o 
     let wrapper (n,f) = 
-      n, (fun p i -> to_list_o @@ f (of_list_p p) (of_list_i i))
+      n, (fun c p i -> to_list_o @@ f c (of_list_p p) (of_list_i i))
   end
 
   module Op1 = struct
@@ -37,7 +37,7 @@ module Simlib = struct
 
     let res p = if p.P.a_signed = 1 then sresize else uresize 
 
-    let f1 f p i = 
+    let f1 f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       let a = (res p) i.I.a p.P.y_width in
@@ -47,7 +47,7 @@ module Simlib = struct
     let pos = "$pos", f1 (fun x -> x)
     let neg = "$neg", f1 negate
     
-    let fr f p i = 
+    let fr f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       O.({ y = uresize (reduce f (bits i.I.a)) p.P.y_width })
@@ -56,7 +56,7 @@ module Simlib = struct
     let reduce_and = "$reduce_and", fr (&:)
     let reduce_xor = "$reduce_xor", fr (^:)
     let reduce_xnor = "$reduce_xnor", 
-      (fun p i -> 
+      (fun _ p i -> 
         let p = P.map pint p in
         assert (width i.I.a = p.P.a_width);
         let y = reduce (^:) (bits i.I.a) in
@@ -64,7 +64,7 @@ module Simlib = struct
     let reduce_bool = "$reduce_bool", fr (|:)
     
     let logic_not = "$logic_not", 
-      (fun p i ->
+      (fun _ p i ->
         let p = P.map pint p in
         assert (width i.I.a = p.P.a_width);
         let y = i.I.a ==:. 0 in
@@ -87,7 +87,7 @@ module Simlib = struct
 
     let res p = if p.P.a_signed = 1 && p.P.b_signed = 1 then sresize else uresize
 
-    let f2 f p i = 
+    let f2 f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -103,7 +103,7 @@ module Simlib = struct
     let add = "$add", f2 (+:)
     let sub = "$sub", f2 (-:)
     let mul = "$mul", 
-      (fun p i ->
+      (fun _ p i ->
         let p = P.map pint p in
         assert (width i.I.a = p.P.a_width);
         assert (width i.I.b = p.P.b_width);
@@ -116,7 +116,7 @@ module Simlib = struct
         in
         O.({ y = a *: b }))
 
-    let fs f p i = 
+    let fs f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -126,7 +126,7 @@ module Simlib = struct
     let shl = "$shl", fs (fun _ a b -> log_shift sll a b)
     let shr = "$shr", fs (fun s a b -> log_shift srl a b)
 
-    let fss f p i = 
+    let fss f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -137,7 +137,7 @@ module Simlib = struct
     let sshr = "$sshr", fss (fun s a b -> log_shift (if s=1 then sra else srl) a b)
 
     let shift = "$shift", 
-      (fun p i ->
+      (fun _ p i ->
         let p = P.map pint p in
         assert (width i.I.a = p.P.a_width);
         assert (width i.I.b = p.P.b_width);
@@ -159,7 +159,7 @@ module Simlib = struct
     (* let mod = ... *)
     (* let pow = ... *)
 
-    let fl f p i = 
+    let fl f _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -168,7 +168,7 @@ module Simlib = struct
     let logic_and = "$logic_and", fl (fun a b -> (a <>:. 0) &: (b <>:. 0))
     let logic_or = "$logic_or", fl (fun a b -> (a <>:. 0) |: (b <>:. 0))
 
-    let fc fs fu p i =
+    let fc fs fu _ p i =
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -204,7 +204,7 @@ module Simlib = struct
     module O = interface X Y end
     module W = Wrapper(P)(I)(O)
 
-    let fa p i = 
+    let fa _ p i = 
       let wid = pint p.P.width in
       assert (width i.I.a = wid);
       assert (width i.I.b = wid);
@@ -231,7 +231,7 @@ module Simlib = struct
     module O = interface CO end
     module W = Wrapper(P)(I)(O)
 
-    let lcu p i = 
+    let lcu _ p i = 
       let wid = pint p.P.width in
       assert (width i.I.p = wid);
       assert (width i.I.g = wid);
@@ -262,7 +262,7 @@ module Simlib = struct
     module O = interface Y end
     module W = Wrapper(P)(I)(O)
     
-    let slice p i = 
+    let slice _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       O.({ y = uresize (srl i.I.a p.P.offset) p.P.y_width })
@@ -280,7 +280,7 @@ module Simlib = struct
     module O = interface Y end
     module W = Wrapper(P)(I)(O)
     
-    let concat p i = 
+    let concat _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.a_width);
       assert (width i.I.b = p.P.b_width);
@@ -299,7 +299,7 @@ module Simlib = struct
     module O = interface Y end
     module W = Wrapper(P)(I)(O)
     
-    let mux p i = 
+    let mux _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.width);
       assert (width i.I.b = p.P.width);
@@ -319,7 +319,7 @@ module Simlib = struct
     module O = interface Y end
     module W = Wrapper(P)(I)(O)
     
-    let pmux p i = 
+    let pmux _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.width);
       assert (width i.I.b = (p.P.width * p.P.s_width));
@@ -346,7 +346,7 @@ module Simlib = struct
     module O = interface Y end
     module W = Wrapper(P)(I)(O)
     
-    let lut p i = 
+    let lut _ p i = 
       let p = P.map pint p in
       assert (width i.I.a = p.P.width);
       let lut = consti (1 lsl p.P.width) p.P.lut in
@@ -377,7 +377,7 @@ module Simlib = struct
     module I = interface CLK D end
     module O = interface Q end
     module W = Wrapper(P)(I)(O)
-    let dff p i = 
+    let dff _ p i = 
       let open I in
       let p = P.map pint p in
       assert (width i.d = p.P.width);
@@ -394,7 +394,7 @@ module Simlib = struct
     module I = interface CLK EN D end
     module O = interface Q end
     module W = Wrapper(P)(I)(O)
-    let dffe p i = 
+    let dffe _ p i = 
       let open I in
       let p = P.map pint p in
       assert (width i.d = p.P.width);
@@ -412,7 +412,7 @@ module Simlib = struct
     module I = interface CLK SET CLR D end
     module O = interface Q end
     module W = Wrapper(P)(I)(O)
-    let dffsr p i = 
+    let dffsr _ p i = 
       let open I in
       let p = P.map pint p in
       assert (width i.d = p.P.width);
@@ -437,7 +437,7 @@ module Simlib = struct
     module I = interface CLK ARST D end
     module O = interface Q end
     module W = Wrapper(P)(I)(O)
-    let adff p i = 
+    let adff _ p i = 
       let open I in
       let p = P.map pint p in
       assert (width i.d = p.P.width);
@@ -467,7 +467,7 @@ module Simlib = struct
     module W = Wrapper(P)(I)(O)
     let get_input_width p = I.({ en = p.P.width; clk = 1; data = p.P.width; addr = p.P.abits })
     let get_output_width p = O.(map snd t)
-    let memwr p i = 
+    let memwr _ p i = 
       let open I in
       let memid = pstr p.P.memid in
       let p = P.map (fun p -> try pint p with _ -> 0) p in
@@ -498,7 +498,7 @@ module Simlib = struct
     module W = Wrapper(P)(I)(O)
     let get_input_width p = I.({ en = p.P.width; clk = 1; addr = p.P.abits })
     let get_output_width p = O.({ data = p.P.width })
-    let memrd p i = 
+    let memrd _ p i = 
       let open I in
       let memid = pstr p.P.memid in
       let p = P.map (fun p -> try pint p with _ -> 0) p in
@@ -521,7 +521,7 @@ module Simlib = struct
     let cells = [ memrd ]
   end
 
-  (* 'memory -nobram; opt; clean' *)
+  (* 'memory -nomap; opt; clean' *)
   module Mem = struct
     module P = interface 
       ABITS INIT MEMID OFFSET SIZE WIDTH
@@ -560,11 +560,69 @@ module Simlib = struct
 
     let o_of_arrays o = O.map (fun o -> concat @@ List.rev @@ Array.to_list o) o
 
-    let mem p i = 
-      let memid = pstr p.P.memid in
+    let get_wren_bits p cell = 
+      let open Cell in
+      let wren = List.assoc "WR_EN" cell.inputs in
+      let wren = Array.of_list @@ wren in
+      Array.init p.P.wr_ports (fun j -> Array.sub wren (p.P.width*j) p.P.width)
+
+    let mem cell p i = 
       let p = P.map (fun p -> try pint p with _ -> 0) p in
       let i = i_to_arrays p i in
-      O.{ rd_data = zero (p.P.rd_ports * p.P.width) }
+      let module L = Lvt.Make_wren(struct
+        let dbits = p.P.width
+        let abits = p.P.abits
+        let size = p.P.size
+      end) in
+      let layout = get_wren_bits p cell in
+      
+      let bit x i = ((x lsr i) land 1) <> 0 in
+      let get_read_mode r = 
+        match bit p.P.rd_clk_enable r, bit p.P.rd_transparent r with
+        | true, true -> `sync_wbr
+        | true, false -> `sync_rbw
+        | false, true -> `async_wbr
+        | false, false -> `async_rbw
+      in
+      let offset addr = if p.P.offset = 0 then addr else addr -:. p.P.offset in
+      let wr_clk w = 
+        if bit p.P.wr_clk_enable w then 
+          failwith ("memory write port is not synchronous: " ^ cell.Cell.label ^ 
+                    " port " ^ string_of_int w)
+        else
+          i.I.wr_clk.(w) 
+      in
+
+      let rd_port r = Lvt.{
+        rspec = { Signal.Seq.r_none with 
+          Signal.Types.reg_clock = i.I.rd_clk.(r);
+          reg_clock_level = if bit p.P.rd_clk_polarity r then vdd else gnd;
+        };
+        rd = {
+          Rd.ra = offset i.I.rd_addr.(r);
+          re = i.I.rd_en.(r);
+        };
+        mode = get_read_mode r;
+      } in
+
+      let wr_port w = Lvt.{
+        wspec = { Signal.Seq.r_none with 
+          Signal.Types.reg_clock = wr_clk w;
+          reg_clock_level = if bit p.P.wr_clk_polarity w then vdd else gnd;
+        };
+        wr = {
+          Wr.we = i.I.wr_en.(w);
+          wa = offset i.I.wr_addr.(w);
+          d = i.I.wr_data.(w)
+        };
+      } in
+
+      let q = L.memory ~layout
+        ~rd:(Array.init p.P.rd_ports rd_port)
+        ~wr:(Array.init p.P.wr_ports wr_port)
+      in
+
+      O.{ rd_data = concat @@ List.rev @@ Array.to_list q }
 
     let mem = "$mem", mem
     let cells = [ mem ]
@@ -584,14 +642,15 @@ module Simlib = struct
     (List.map Dffe.W.wrapper Dffe.cells) @
     (List.map Dffsr.W.wrapper Dffsr.cells) @
     (List.map Adff.W.wrapper Adff.cells) @
-    (List.map Memwr.W.wrapper Memwr.cells) @
-    (List.map Memrd.W.wrapper Memrd.cells)
+    (*(List.map Memwr.W.wrapper Memwr.cells) @
+    (List.map Memrd.W.wrapper Memrd.cells) @*)
+    (List.map Mem.W.wrapper Mem.cells)
 
   let black_boxes = [
     "shfitx"; "macc"; "div"; "mod"; "pow";
     "alu"; "tribuf"; "assert"; "assume"; "equiv";
     "sr"; "dlatch"; "dlatchsr"; 
-    "memrd"; "memwr"; "meminit"; "mem";
+    "memrd"; "memwr"; "meminit"; 
   ]
 
   let cells = black_boxes, cells'
@@ -627,9 +686,13 @@ module Proof = struct
         C.I.(map2 (fun (n,_) w -> input n w) t widths)
       in
 
+      let no_cell = Cell.{
+        typ = ""; label = ""; parameters = []; inputs = []; outputs = [];
+      } in
+
       (* hardcaml simlib circuit *)
       let mkparams p = C.P.(map (fun x -> HardCaml.Signal.Types.ParamInt x) p) in
-      let outputs = fn (mkparams params) inputs in
+      let outputs = fn no_cell (mkparams params) inputs in
 
       (*let () = Printf.printf "created %s\n" name in*)
 

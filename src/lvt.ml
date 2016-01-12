@@ -67,11 +67,11 @@ module type Cfg = sig
 end
 
 module Wr = interface
-  wclk we wa d
+  we wa d
 end
 
 module Rd = interface
-  rclk re ra
+  re ra
 end
 
 (* fallthrough = wbr (write before read) *)
@@ -82,26 +82,33 @@ let is_async m = not (is_sync m)
 let is_rbw = function `sync_rbw | `async_rbw -> true | _ -> false
 let is_wbr m = not (is_rbw m)
 
+type wr_port = 
+  {
+    wr : t Wr.t;
+    wspec : Signal.Types.register;
+  }
+
+type rd_port = 
+  {
+    rd : t Rd.t;
+    rspec : Signal.Types.register;
+    mode : mode;
+  }
+
 module Ports(C : Cfg) = struct
   module Wr = struct
     include Wr 
-    let bits = { wclk = 1; we = 1; wa = C.abits; d = C.dbits }
+    let bits = { we = 1; wa = C.abits; d = C.dbits }
     let t = map2 (fun (n,_) b -> n,b) t bits
   end
   module Rd = struct
     include Rd 
-    let bits = { rclk = 1; re = 1; ra = C.abits }
+    let bits = { re = 1; ra = C.abits }
     let t = map2 (fun (n,_) b -> n,b) t bits
   end
 end
 
-module Multiport_regs(C : Cfg) : sig
-  
-  include module type of Ports(C)
-
-  val memory : wr:t Wr.t array -> rd:t Rd.t array -> mode:mode array -> t array
-
-end = struct
+module Multiport_regs(C : Cfg) = struct
 
   (* async read memories with multiple read and write ports, implemented as registers *)
 
@@ -116,35 +123,33 @@ end = struct
                            | [s0,d0;s1,d1] -> s1 |: s0, mux2 s1 d1 d0
                            | _ -> empty,empty)
 
-  let spec clk = { Seq.r_none with Types.reg_clock = clk }
-
   let reg_we_enable ~we ~wa = 
     select (binary_to_onehot wa) (size-1) 0 &: mux2 we (ones size) (zero size)
 
   let memory_nwr_array ~wr = 
-    let wclk = wr.(0).wclk in (* note; we can only support one write clock! *)
-    let wr = Array.to_list wr in
+    let wspec = wr.(0).wspec in
+    let wr = List.map (fun wr -> wr.wr) @@ Array.to_list wr in
     let we1h = List.map (fun wr -> reg_we_enable ~we:wr.we ~wa:wr.wa) wr in
     Array.to_list @@ Array.init size 
       (fun elt ->
         let wed = List.map2 (fun we1h wr -> we1h.[elt:elt], wr.d) we1h wr in
         let we,d = pri wed in (* last d with write enable set *)
-        let r = Seq.reg (spec wclk) we d in
+        let r = Seq.reg wspec we d in
         we, d, r)
 
   (* n write, n read ports *)
-  let memory ~wr ~rd ~mode = 
+  let memory ~wr ~rd = 
     let base = memory_nwr_array ~wr in
     Array.init (Array.length rd) 
       (fun i -> 
-        let reg = Seq.reg (spec rd.(i).rclk) in
+        let reg = Seq.reg rd.(i).rspec in
         let mr = List.map (fun (we,d,r) -> mux2 we d r) base in
         let r = List.map (fun (_,_,r) -> r) base in
-        match mode.(i) with
-        | `async_wbr -> mux rd.(i).ra mr
-        | `async_rbw -> mux rd.(i).ra r
-        | `sync_wbr -> mux (reg rd.(i).re rd.(i).ra) r
-        | `sync_rbw -> reg rd.(i).re (mux rd.(i).ra r))
+        match rd.(i).mode with
+        | `async_wbr -> mux rd.(i).rd.ra mr
+        | `async_rbw -> mux rd.(i).rd.ra r
+        | `sync_wbr -> mux (reg rd.(i).rd.re rd.(i).rd.ra) r
+        | `sync_rbw -> reg rd.(i).rd.re (mux rd.(i).rd.ra r))
 
 end
 
@@ -156,8 +161,9 @@ module Make(C : Cfg) = struct
 
   let spec clk = { Seq.r_none with Types.reg_clock = clk }
 
-  let memory_1rd ~wr ~rd ~mode = 
-    let wspec, rspec = spec wr.wclk, spec rd.rclk in
+  let memory_1rd ~wr ~rd = 
+    let wspec, rspec, mode = wr.wspec, rd.rspec, rd.mode in
+    let wr, rd = wr.wr, rd.rd in
     match mode with
     | `sync_rbw -> Seq.reg rspec rd.re (Seq.memory C.size wspec wr.we wr.wa wr.d rd.ra)
     | `sync_wbr -> Seq.memory C.size wspec wr.we wr.wa wr.d (Seq.reg rspec rd.re rd.ra)
@@ -165,13 +171,12 @@ module Make(C : Cfg) = struct
     | `async_wbr -> 
       mux2 (wr.we &: (wr.wa ==: rd.ra)) wr.d (Seq.memory C.size wspec wr.we wr.wa wr.d rd.ra)
 
-  let memory_nrd ~wr ~rd ~mode = 
+  let memory_nrd ~wr ~rd = 
     let nrd = Array.length rd in
-    Array.init nrd (fun i -> memory_1rd ~wr ~rd:rd.(i) ~mode:mode.(i))
+    Array.init nrd (fun i -> memory_1rd ~wr ~rd:rd.(i))
 
-  let memory ~wr ~rd ~mode = 
+  let memory ~wr ~rd = 
     let nwr, nrd = Array.length wr, Array.length rd in
-    assert (Array.length mode = nrd);
 
     (* create the live value table *)
     let module Lvt_cfg = struct
@@ -183,12 +188,13 @@ module Make(C : Cfg) = struct
     let lvt = 
       if nwr = 1 then [||]
       else
-        let lvt_wr = Array.init nwr (fun i -> { wr.(i) with d = consti Lvt_cfg.dbits i; }) in
-        Lvt.memory ~wr:lvt_wr ~rd ~mode 
+        let lvt_wr = Array.init nwr (fun i -> 
+          { wr.(i) with wr = { wr.(i).wr with d = consti Lvt_cfg.dbits i } }) in
+        Lvt.memory ~wr:lvt_wr ~rd 
     in
 
     (* create the memory banks *)
-    let mem = Array.init nwr (fun i -> memory_nrd ~wr:wr.(i) ~rd ~mode) in
+    let mem = Array.init nwr (fun i -> memory_nrd ~wr:wr.(i) ~rd) in
 
     (* select the correct memory bank *)
     Array.init nrd 
@@ -196,6 +202,70 @@ module Make(C : Cfg) = struct
         let mem = Array.init nwr (fun wr -> mem.(wr).(rd)) in
         if nwr = 1 then mem.(0) 
         else mux lvt.(rd) (Array.to_list mem))
+
+end
+
+module Make_wren(C : Cfg) = struct
+
+  module Wr = struct
+    include Wr 
+    let bits = { we = C.dbits; wa = C.abits; d = C.dbits }
+    let t = map2 (fun (n,_) b -> n,b) t bits
+  end
+  module Rd = struct
+    include Rd 
+    let bits = { re = 1; ra = C.abits }
+    let t = map2 (fun (n,_) b -> n,b) t bits
+  end
+
+  module L = Make(C)
+
+  let get_layout wrnets =
+    let runs list = 
+      let rec f acc prev l = 
+        match prev, l with
+        | None, [] -> []
+        | None, h::t -> f acc (Some(h,1)) t
+        | Some(prev, run), [] -> List.rev ((prev,run) :: acc)
+        | Some(prev, run), h::t ->
+            if prev = h then f acc (Some(prev, run+1)) t
+            else f ((prev, run) :: acc) (Some(h,1)) t
+      in
+      f [] None list
+    in
+    let transpose a = 
+      let i0 = Array.length a in
+      let i1 = Array.length a.(0) in
+      Array.init i1 (fun i1 -> Array.init i0 (fun i0 -> a.(i0).(i1)))
+    in
+    let rec starts pos = function
+      | [] -> []
+      | (h,r)::t -> (h,pos,r) :: starts (pos+r) t
+    in
+    starts 0 @@ runs @@ Array.to_list @@ transpose wrnets 
+  
+  let memory ~layout = 
+    let layout = get_layout layout in
+    let memory ~wr ~rd = 
+      let nrd = Array.length rd in
+      let concat l =
+        Array.init nrd (fun i -> concat @@ List.rev @@ List.map (fun x -> x.(i)) l)
+      in
+      concat @@ List.map 
+        (fun (_,n,bits) ->
+          let sel_wr wr = 
+            { wr with 
+              wr = { wr.wr with
+                Wr.we = select wr.wr.Wr.we n n;
+                d = select wr.wr.Wr.d (n+bits-1) n;
+              }
+            }
+          in
+          let wr = Array.map sel_wr wr in
+          L.memory ~wr ~rd)
+      layout
+    in
+    memory
 
 end
 

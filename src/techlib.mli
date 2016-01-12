@@ -12,8 +12,8 @@ val pstr : Signal.Types.parameter -> string
 module Simlib : sig
 
   module Wrapper(P : Interface.S)(I : Interface.S)(O : Interface.S) : sig
-    type fn = string * (Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
-    val wrapper : fn -> string * cell
+    type fn = string * (Cell.t -> Signal.Types.parameter P.t -> Signal.Comb.t I.t -> Signal.Comb.t O.t)
+    val wrapper : fn -> string * (Cell.t -> cell)
   end
 
   module Op1 : sig
@@ -268,7 +268,7 @@ module Simlib : sig
   end
 
   (* basic yosys tech library *)
-  val cells : string list * cell assoc
+  val cells : string list * (Cell.t -> cell) assoc
 
 end
 

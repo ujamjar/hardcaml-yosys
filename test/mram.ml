@@ -21,6 +21,7 @@ let nrd = ref 2
 let random_re = ref true
 let mode : [ `alternate | Lvt.mode ] ref = ref `alternate
 let vlog = ref false
+let no_waves = ref false
 
 let _ = Arg.(parse [
   "-n", Set_int(n_cycles), "Number of cycles to simulate (default: 1000)";
@@ -34,6 +35,7 @@ let _ = Arg.(parse [
   "-async-rbw", Unit(fun () -> mode := `async_rbw), "Put all ports in async_rbw mode";
   "-async-wbr", Unit(fun () -> mode := `async_wbr), "Put all ports in async_wbr mode";
   "-vlog", Set(vlog), "Dump verilog";
+  "-no-waves", Set(no_waves), "Disable waveform view";
 ] (fun _ -> failwith "invalid anon arg")
 "LVT Multiport Memory Testbench.
 
@@ -49,7 +51,7 @@ between port modes).
 For testing the read-enable port may be held constant.
 ")
 
-let testbench_mem_regs () = 
+let testbench_mram () = 
 
   let module C = struct
     let abits = !abits
@@ -75,12 +77,15 @@ let testbench_mem_regs () =
   let mk_input m (n,b) = input (aname m n) b in
   let wr = Array.init nwr (fun m -> L.Wr.(map (mk_input m) t)) in
   let rd = Array.init nrd (fun m -> L.Rd.(map (mk_input m) t)) in
-  let q = L.memory ~wr ~rd ~mode in
+  let wr' = Array.init nwr (fun m -> { Lvt.wspec=Seq.r_none; wr=wr.(m) }) in
+  let rd' = Array.init nrd (fun m -> { Lvt.rspec=Seq.r_none; rd=rd.(m); mode=mode.(m) }) in
+  let q = L.memory ~wr:wr' ~rd:rd' in
   let qi = Array.init nrd (fun m -> input (aname m "qi") C.dbits) in
   let reg_qr m = 
+    let r_none = Seq.r_none in
     match mode.(m) with
-    | `sync_wbr -> Seq.reg Seq.r_none vdd qi.(m)
-    | `sync_rbw -> Seq.reg Seq.r_none rd.(m).L.Rd.re qi.(m)
+    | `sync_wbr -> Seq.reg r_none vdd qi.(m)
+    | `sync_rbw -> Seq.reg r_none rd.(m).L.Rd.re qi.(m)
     | _ -> qi.(m)
   in
   let qr = Array.init nrd reg_qr in
@@ -95,22 +100,20 @@ let testbench_mem_regs () =
     (Array.to_list @@ Array.map snd qs) @
     (Array.to_list check)
   in
-  let circ = Circuit.make "memreg" outputs in
+  let circ = Circuit.make "mram" outputs in
   let sim = Cs.make circ in
   let sim,waves = Waveterm_sim.wrap sim in
  
   let rd m = 
     {
-      L.Rd.rclk = ref B.gnd;
-      ra = S.in_port sim (aname m "ra");
+      L.Rd.ra = S.in_port sim (aname m "ra");
       re = try S.in_port sim (aname m "re") with _ -> ref B.vdd;
     }
   in
 
   let wr m = 
     {
-      L.Wr.wclk = ref B.gnd;
-      wa = S.in_port sim (aname m "wa");
+      L.Wr.wa = S.in_port sim (aname m "wa");
       we = S.in_port sim (aname m "we");
       d = S.in_port sim (aname m "d");
     }
@@ -180,9 +183,9 @@ let testbench_mem_regs () =
     S.cycle sim;
   done;
 
-  Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves }));
+  (if not !no_waves then Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves })));
   (if !vlog then Rtl.Verilog.write print_string circ)
 
 
-let () = testbench_mem_regs ()
+let () = testbench_mram ()
 

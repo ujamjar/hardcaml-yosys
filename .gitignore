@@ -3,3 +3,5 @@
 yosys/
 test/sat_techlib/
 _build/
+setup.data
+test/*.json

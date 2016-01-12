@@ -18,7 +18,7 @@ which can be taken from the yosys simlib).
 
 |Status              | Modules | 
 |--------------------|---------|
-| to do              | sr, shiftx, macc, alu, mem |
+| to do              | sr, shiftx, fsm, macc, alu, mem |
 | bbox only          | dlatch, dlatchsr |
 | no support planned | tribuf, div, mod, pow, memwr, memrd, meminit, assert, assume, equiv |
 
@@ -40,7 +40,7 @@ yosys> memory -dff
 ```
 
 The third option will attempt to keep memories, but implement them using HardCaml
-memory primitives.  HardCaml generally only supports memories with one read and one
+memory primitives.  HardCaml only supports memories with one read and one
 write port whereas in general we need to support multi-port memories with 
 
 * N read ports
@@ -54,14 +54,14 @@ To support yosys we use a construction called a [LVT multi-port memory](http://f
 which builds more general memory structures from simpler single port memories.  The following
 limitations are known
 
-1. We only support 1 write clock domain
+1. only supports 1 write clock domain
 2. read-before-write and write-before-read behaviour only really makes sense if the read and
    write clocks are in the same clock domain.
 
 In yosys use;
 
 ```
-yosys> memory -nobram; opt; clean
+yosys> memory -nomap; opt; clean
 ```
 
 ### Example

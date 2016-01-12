@@ -2,26 +2,15 @@ open HardCaml
 open Printf
 
 exception Cell_not_in_techlib of string * string
-exception No_cell_direction_specified of string * string
-exception Unsupported_parameter_type of string * string
 exception Failed_to_find_net of int
 exception Input_not_found of string
 exception Empty_bus
-exception Invalid_net_tristate
-exception Invalid_net_bit_specifier of string
 exception Expecting_memory_id
 module I = Map.Make(struct type t = int let compare = compare end)
 module S = Map.Make(struct type t = string let compare = compare end)
 module Y = Yosys_atd_t 
 
 type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t Techlib.assoc
-
-let net_of_bit = function
-  | `Int i -> i
-  | `String "x" | `String "X" -> 0
-  | `String "z" | `String "Z" -> raise Invalid_net_tristate
-  | `String x -> (try int_of_string x with _ -> raise (Invalid_net_bit_specifier x))
-  | _ -> raise (Invalid_net_bit_specifier "unknown json type")
 
 (* something drives a net; it's either a module input, or a cell output. 
 
@@ -37,7 +26,6 @@ let modl_wire_map ports cells =
     let wire = Signal.Comb.wire (List.length bits) in
     (name,wire), snd @@ List.fold_left 
       (fun (idx,map) bit ->
-        let bit = net_of_bit bit in
         (* note; adding [bit] if it is already in the list 
             should be an error (well...except for trisates!) *)
         (*printf "%i -> %Li[%i]\n" bit (Signal.Types.uid wire) idx;*)
@@ -59,14 +47,14 @@ let modl_wire_map ports cells =
   (* mapping to module inputs *)
   let mi, map = 
     map_with_smap
-      (fun map (n,(port:Y.port)) -> map_of_bits map (n,port.Y.bits))
+      (fun map (n,(port:Y.port)) -> map_of_bits map (n, List.map Cell.net_of_bit port.Y.bits))
       map @@ List.filter (fun (_,port) -> port.Y.direction = `Input) ports
   in
 
   (* mapping to cell outputs *)
   let co, map = 
     map_with_list 
-      (fun map (_,x) -> map_with_smap map_of_bits map x.Cell.outputs) 
+      (fun map (_,x,_) -> map_with_smap map_of_bits map x.Cell.outputs) 
       map cells 
   in
 
@@ -79,7 +67,7 @@ let memid (_,cell) =
   | _ -> raise Expecting_memory_id
   | exception _ -> raise Expecting_memory_id
 
-let is_memrd cell = celltyp cell = "$memrd" 
+(*let is_memrd cell = celltyp cell = "$memrd" 
 let is_memwr cell = celltyp cell = "$memwr" 
 let is_mem cell = is_memrd cell || is_memwr cell 
 
@@ -109,24 +97,12 @@ let convert_memories cells =
   let mem_cells = List.map (fun (memid, (rd,wr)) -> Memory.HardCaml.create ~rd ~wr) mems in
   let cells = List.filter (fun cell -> not (is_mem cell)) cells in
   mem_cells @ cells
-
-let partition_ios cell = 
-  List.partition (fun (n,b) ->
-    try List.assoc n cell.Y.port_directions = `Input
-    with Not_found -> raise (No_cell_direction_specified(cell.Y.typ, n)))
-  cell.Y.connections
-
-let mk_params cell_name parameters = 
-  List.map (function
-    | name,`Int i -> name, Signal.Types.ParamInt i
-    | name, `String s -> name, Signal.Types.ParamString s
-    | name,_ -> raise (Unsupported_parameter_type(cell_name,name))) parameters
+*)
 
 (* create black box for cell *)
 let black_box_of_cell cell  = 
-  let module E = struct exception SmellyDog end in
-  let _, outputs = partition_ios cell in
-  let f p i = 
+  let _, outputs = Cell.partition_ios cell in
+  let f _ p i = 
     let inst = Signal.Instantiation.inst cell.Y.typ p i
       (List.map (fun (n,b) -> n, List.length b) outputs)
     in
@@ -154,21 +130,14 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
 
   (* get cell with explicit inputs and outputs and map to techlib *)
   let mk_cell (inst_name,cell) = 
-    let inputs, outputs = partition_ios cell in
-    inst_name, {
-      Cell.typ = cell.Y.typ;
-      label = Y.(cell.attributes.src);
-      cell = find_cell cell;
-      parameters = cell.Y.parameters;
-      inputs; outputs;
-    }
+    let cell' = Cell.mk_cell cell in
+    inst_name, cell', ((find_cell cell) cell') 
   in
 
   (* instantiate all the cells *)
   let open Signal.Comb in
 
   let get_bus map bus = 
-    let bus = List.map net_of_bit bus in
     let find b =
       try I.find b map 
       with Not_found -> raise (Failed_to_find_net(b))
@@ -193,14 +162,15 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
         let l = opt (w,i,i) t in
         concat @@ List.rev @@ List.map (fun (w,l,h) -> w.[h:l]) l
   in
+  let get_bus_of_nets map bus = get_bus map (List.map Cell.net_of_bit bus) in
 
-  let instantiate_cell map (cell_name,cell) co = 
+  let instantiate_cell map (cell_name,cell,cell_fn) co = 
     (* create parameters *)
-    let params = mk_params cell_name cell.Cell.parameters in
+    let params = Cell.mk_params cell_name cell.Cell.parameters in
     (* create input busses *)
     let inputs = List.map (fun (name,bits) -> name, get_bus map bits) cell.Cell.inputs in 
     (* instantiate module *)
-    let outputs = cell.Cell.cell params inputs in 
+    let outputs = cell_fn params inputs in 
     (* connect outputs *)
     List.iter (fun (n,o) -> S.find n co <== o) outputs
   in
@@ -217,12 +187,12 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   in
 
   let collect_outputs map outputs = 
-    List.map (fun (n,(port:Y.port)) -> n, get_bus map port.Y.bits) outputs
+    List.map (fun (n,(port:Y.port)) -> n, get_bus_of_nets map port.Y.bits) outputs
   in
 
   let load_modl modl =
     let cells = List.map mk_cell modl.Y.cells in
-    let cells = convert_memories cells in
+    (*let cells = convert_memories cells in*)
     let mi,co,map = modl_wire_map modl.Y.ports cells in
     instantiate map cells co;
     mi,co,map

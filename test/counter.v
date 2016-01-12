@@ -2,7 +2,8 @@
 
 module counter (
   input clk, rst, clr, en,
-  output reg [7:0] q
+  output reg [7:0] q,
+  output p
 );
 
   always @(posedge clk, posedge rst) begin
@@ -10,6 +11,8 @@ module counter (
     else if (clr) q <= 0;
     else if (en) q <= q + 1;
   end
+
+  assign p = q[7];
 
 endmodule
   
