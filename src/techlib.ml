@@ -586,7 +586,7 @@ module Simlib = struct
       in
       let offset addr = if p.P.offset = 0 then addr else addr -:. p.P.offset in
       let wr_clk w = 
-        if bit p.P.wr_clk_enable w then 
+        if not (bit p.P.wr_clk_enable w) then 
           failwith ("memory write port is not synchronous: " ^ cell.Cell.label ^ 
                     " port " ^ string_of_int w)
         else

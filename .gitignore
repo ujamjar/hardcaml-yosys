@@ -4,4 +4,8 @@ yosys/
 test/sat_techlib/
 _build/
 setup.data
+setup.log
 test/*.json
+src/yosys_atd_*.ml*
+*.native
+*.byte
