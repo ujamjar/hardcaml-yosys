@@ -152,7 +152,21 @@ module Simlib = struct
         in
         O.({ y = uresize y p.P.y_width }))
 
-    (* let shiftx = ... *)
+    let shiftx = "$shiftx",  (* XXX not tested! *)
+      (fun _ p i ->
+        let p = P.map pint p in
+        assert (width i.I.a = p.P.a_width);
+        assert (width i.I.b = p.P.b_width);
+        let a = uresize i.I.a (max p.P.a_width p.P.y_width) in
+        let y = 
+          if p.P.b_signed = 1 then
+            mux2 (msb i.I.b) 
+              (log_shift sll a (negate i.I.b)) 
+              (log_shift srl a i.I.b) 
+          else
+            log_shift srl a i.I.b 
+        in
+        O.({ y = uresize y p.P.y_width }))
 
     (* let macc = ... *)
     (* let div = ... *)
@@ -189,7 +203,7 @@ module Simlib = struct
     let cells = [
       and_; or_; xor_; xnor_;
       add; sub; mul;
-      shl; shr; sshl; sshr; shift;
+      shl; shr; sshl; sshr; shift; shiftx;
       logic_and; logic_or;
       lt; le; gt; ge; eq; ne; eqx; nex;
     ]

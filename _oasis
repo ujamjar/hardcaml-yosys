@@ -47,3 +47,10 @@ Executable wrram
   Install:            false
   BuildDepends:       hardcaml,hardcaml.syntax,hardcaml-yosys,hardcaml-waveterm.lterm
 
+Document HardCamlYosys
+  Title:                HardCaml documentation
+  Type:                 ocamlbuild (0.3)
+  BuildTools+:          ocamldoc
+  Install:              false
+  XOCamlbuildPath:      src
+  XOCamlbuildLibraries: hardcaml-yosys

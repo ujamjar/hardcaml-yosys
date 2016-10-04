@@ -14,6 +14,8 @@ type attributes =
     ~src : string;
     ~full_case : int;
     ~parallel_case : int;
+    ?init : dyn option;
+    ?unused_bits : string option;
   }
 
 type cell = 

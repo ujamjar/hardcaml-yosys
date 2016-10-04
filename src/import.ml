@@ -4,7 +4,7 @@ open Printf
 exception Cell_not_in_techlib of string * string
 exception Failed_to_find_net of int
 exception Input_not_found of string
-exception Empty_bus
+exception Empty_bus of string
 exception Expecting_memory_id
 module I = Map.Make(struct type t = int let compare = compare end)
 module S = Map.Make(struct type t = string let compare = compare end)
@@ -137,7 +137,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   (* instantiate all the cells *)
   let open Signal.Comb in
 
-  let get_bus map bus = 
+  let get_bus cell_name map bus = 
     let find b =
       try I.find b map 
       with Not_found -> raise (Failed_to_find_net(b))
@@ -156,19 +156,19 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
           else (w,l,h) :: opt (w',i,i) bus
       in
       match bus with
-      | [] -> raise Empty_bus
+      | [] -> raise (Empty_bus cell_name)
       | h::t -> 
         let i,w = find h in
         let l = opt (w,i,i) t in
         concat @@ List.rev @@ List.map (fun (w,l,h) -> w.[h:l]) l
   in
-  let get_bus_of_nets map bus = get_bus map (List.map Cell.net_of_bit bus) in
+  let get_bus_of_nets name map bus = get_bus name map (List.map Cell.net_of_bit bus) in
 
   let instantiate_cell map (cell_name,cell,cell_fn) co = 
     (* create parameters *)
     let params = Cell.mk_params cell_name cell.Cell.parameters in
     (* create input busses *)
-    let inputs = List.map (fun (name,bits) -> name, get_bus map bits) cell.Cell.inputs in 
+    let inputs = List.map (fun (name,bits) -> name, get_bus (cell_name ^ ": " ^ name) map bits) cell.Cell.inputs in 
     (* instantiate module *)
     let outputs = cell_fn params inputs in 
     (* connect outputs *)
@@ -187,7 +187,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   in
 
   let collect_outputs map outputs = 
-    List.map (fun (n,(port:Y.port)) -> n, get_bus_of_nets map port.Y.bits) outputs
+    List.map (fun (n,(port:Y.port)) -> n, get_bus_of_nets ("output: "^n) map port.Y.bits) outputs
   in
 
   let load_modl modl =

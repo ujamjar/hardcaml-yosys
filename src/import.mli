@@ -1,7 +1,7 @@
 exception Cell_not_in_techlib of string * string
 exception Failed_to_find_net of int
 exception Input_not_found of string
-exception Empty_bus
+exception Empty_bus of string
 exception Expecting_memory_id
 
 module I : Map.S
