@@ -1,4 +1,0 @@
-Import Verilog designs into HardCaml
-Use yosys to convert a Verilog design into JSON then use this library
-to load it as a HardCaml design.
-
