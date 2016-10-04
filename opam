@@ -16,5 +16,6 @@ remove: [
 depends: [
   "atdgen"
   "hardcaml"
+  "hardcaml-waveterm"
   "ocamlfind" {build}
 ]
