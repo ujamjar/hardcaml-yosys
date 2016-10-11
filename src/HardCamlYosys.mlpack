@@ -1,5 +1,3 @@
-# OASIS_START
-# DO NOT EDIT (digest: fe3565f316c00723c316c47f75cb19f3)
 Yosys_atd_t
 Yosys_atd_j
 Io
@@ -7,4 +5,3 @@ Lvt
 Techlib
 Cell
 Import
-# OASIS_STOP
