@@ -9,7 +9,7 @@ module S = Cyclesim.Api
 
 module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
 module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
-module Waveterm_ui = HardCamlWaveLTerm.Ui.Make(B)(Waveterm_waves)
+module Waveterm_ui = HardCamlWaveTerm.Ui.Make(B)(Waveterm_waves)
 
 let testbench () = 
 

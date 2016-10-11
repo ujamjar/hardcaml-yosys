@@ -6,16 +6,12 @@ authors: [ "Andy Ray" ]
 license: "ISC"
 homepage: "https://github.com/ujamjar/hardcaml-yosys"
 bug-reports: "https://github.com/ujamjar/hardcaml-yosys/issues"
-build: [
-  [make "all"]
-]
-install: ["make" "install"]
-remove: [
-  ["ocamlfind" "remove" "hardcaml-yosys"]
-]
+build: [ ["ocaml" "pkg/pkg.ml" "build"] ]
 depends: [
-  "atdgen"
-  "hardcaml"
-  "hardcaml-waveterm"
   "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build}
+  "atdgen"
+  "camlp4"
+  "hardcaml"
 ]

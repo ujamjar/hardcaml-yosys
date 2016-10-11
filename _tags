@@ -1,54 +1,5 @@
-# OASIS_START
-# DO NOT EDIT (digest: 5bdbd910b054b1d338c0963efc5dfdc1)
-# Ignore VCS directories, you can use the same kind of rule outside
-# OASIS_START/STOP if you want to exclude directories that contains
-# useless stuff for the build process
-true: annot, bin_annot
-<**/.svn>: -traverse
-<**/.svn>: not_hygienic
-".bzr": -traverse
-".bzr": not_hygienic
-".hg": -traverse
-".hg": not_hygienic
-".git": -traverse
-".git": not_hygienic
-"_darcs": -traverse
-"_darcs": not_hygienic
-# Library HardCamlYosys
-"src/HardCamlYosys.cmxs": use_HardCamlYosys
-"src/yosys_atd_t.cmx": for-pack(HardCamlYosys)
-"src/yosys_atd_j.cmx": for-pack(HardCamlYosys)
-"src/io.cmx": for-pack(HardCamlYosys)
-"src/lvt.cmx": for-pack(HardCamlYosys)
-"src/techlib.cmx": for-pack(HardCamlYosys)
-"src/cell.cmx": for-pack(HardCamlYosys)
-"src/import.cmx": for-pack(HardCamlYosys)
-<src/*.ml{,i,y}>: pkg_atdgen
-<src/*.ml{,i,y}>: pkg_hardcaml.syntax
-# Executable convert
-<test/convert.{native,byte}>: pkg_atdgen
-<test/convert.{native,byte}>: pkg_hardcaml
-<test/convert.{native,byte}>: pkg_hardcaml.syntax
-<test/convert.{native,byte}>: use_HardCamlYosys
-<test/convert.{native,byte}>: custom
-# Executable mram
-<test/mram.{native,byte}>: pkg_atdgen
-<test/mram.{native,byte}>: pkg_hardcaml
-<test/mram.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/mram.{native,byte}>: pkg_hardcaml.syntax
-<test/mram.{native,byte}>: use_HardCamlYosys
-<test/mram.{native,byte}>: custom
-# Executable wrram
-<test/wrram.{native,byte}>: pkg_atdgen
-<test/wrram.{native,byte}>: pkg_hardcaml
-<test/wrram.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/wrram.{native,byte}>: pkg_hardcaml.syntax
-<test/wrram.{native,byte}>: use_HardCamlYosys
-<test/*.ml{,i,y}>: pkg_atdgen
-<test/*.ml{,i,y}>: pkg_hardcaml
-<test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
-<test/*.ml{,i,y}>: pkg_hardcaml.syntax
-<test/*.ml{,i,y}>: use_HardCamlYosys
-<test/wrram.{native,byte}>: custom
-# OASIS_STOP
-<yosys>: -traverse
+"src": include
+<src/*>: syntax(camlp4o), package(hardcaml), package(hardcaml.syntax), package(atdgen), package(yojson)
+<src/*.cmx> and not "src/HardCamlYosys.cmx": for-pack(HardCamlYosys)
+
+<test/*>: syntax(camlp4o), package(hardcaml), package(hardcaml.syntax), package(atdgen), package(yojson), package(hardcaml-waveterm)

@@ -8,7 +8,7 @@
 #
 ########################################
 
-.PHONY: clean all install uninstall 
+.PHONY: clean all build clean sat_gen sat_check
 default: all
 
 ATDSRC = src/yosys_atd_j.mli src/yosys_atd_j.ml src/yosys_atd_t.mli src/yosys_atd_t.ml
@@ -17,30 +17,21 @@ $(ATDSRC): src/yosys_atd.atd
 	cd src && atdgen -t yosys_atd.atd
 	cd src && atdgen -j -j-std -j-strict-fields yosys_atd.atd
 
-all: $(ATDSRC) setup.data
-	ocaml setup.ml -build
-
-setup.ml:
-	oasis setup
-
-setup.data: setup.ml
-	ocaml setup.ml -configure
 
 ####################################################
 
-install: all
-	ocaml setup.ml -install
+all: build
 
-uninstall: 
-	ocamlfind remove hardcaml-yosys
+build:
+	ocaml pkg/pkg.ml build
+
+test:
+	ocamlbuild test.otarget
 
 clean:
-	ocaml setup.ml -clean
-	rm -f $(ATDSRC)
-	- find . -name "*~" | xargs rm
-
-distclean:
-	ocaml setup.ml -distclean
+	ocaml pkg/pkg.ml clean
+	find . -name "*~" | xargs rm -f
+	rm -f *.bc *.ll
 
 ####################################################
 # sat checking simlib cells
