@@ -1,5 +1,7 @@
 # HardCamlYosys
 
+[![Build Status](https://travis-ci.org/ujamjar/hardcaml-yosys.svg?branch=master)](https://travis-ci.org/ujamjar/hardcaml-yosys)
+
 Use the opensource verilog synthesis tool [Yosys](http://www.clifford.at/yosys)
 to read a synthesizable verilog design, convert it to a structural netlist
 and save it in a JSON file.
