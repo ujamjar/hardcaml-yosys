@@ -14,5 +14,4 @@ depends: [
   "atdgen"
   "camlp4"
   "hardcaml"
-  "hardcaml-waveterm"
 ]
