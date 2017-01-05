@@ -13,5 +13,5 @@ depends: [
   "topkg" {build}
   "atdgen"
   "camlp4"
-  "hardcaml"
+  "hardcaml" { >= "1.2.0" & > "2.0.0" }
 ]
