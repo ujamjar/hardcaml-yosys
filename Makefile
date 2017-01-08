@@ -8,7 +8,7 @@
 #
 ########################################
 
-.PHONY: clean all build clean sat_gen sat_check
+.PHONY: clean all build clean sat_gen sat_check test
 default: all
 
 ATDSRC = src/yosys_atd_j.mli src/yosys_atd_j.ml src/yosys_atd_t.mli src/yosys_atd_t.ml

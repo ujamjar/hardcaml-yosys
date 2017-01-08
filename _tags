@@ -1,5 +1,5 @@
 "src": include
-<src/*>: syntax(camlp4o), package(hardcaml), package(hardcaml.syntax), package(atdgen), package(yojson)
+<src/*>: package(hardcaml), package(atdgen), package(yojson), package(ppx_deriving_hardcaml), package(ppx_hardcaml)
 <src/*.cmx> and not "src/HardCamlYosys.cmx": for-pack(HardCamlYosys)
 
-<test/*>: syntax(camlp4o), package(hardcaml), package(hardcaml.syntax), package(atdgen), package(yojson), package(hardcaml-waveterm)
+<test/*>: package(hardcaml), package(atdgen), package(yojson), package(hardcaml-waveterm), package(ppx_deriving_hardcaml)

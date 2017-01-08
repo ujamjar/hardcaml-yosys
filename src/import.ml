@@ -144,7 +144,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
     in
     let simple = false in
     if simple then
-      concat @@ List.rev @@ List.map (fun b -> let i,w = find b in w.[i:i]) bus
+      concat @@ List.rev @@ List.map (fun b -> let i,w = find b in [%hw w.[i,i]]) bus
     else (* consolidate bus, where possible *)
       let rec opt (w,l,h) bus = 
         match bus with
@@ -160,7 +160,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
       | h::t -> 
         let i,w = find h in
         let l = opt (w,i,i) t in
-        concat @@ List.rev @@ List.map (fun (w,l,h) -> w.[h:l]) l
+        concat @@ List.rev @@ List.map (fun (w,l,h) -> [%hw w.[h,l]]) l
   in
   let get_bus_of_nets name map bus = get_bus name map (List.map Cell.net_of_bit bus) in
 

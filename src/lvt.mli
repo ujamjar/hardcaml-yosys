@@ -8,8 +8,12 @@ module type Cfg = sig
   val size : int
 end
 
-module Wr : interface we wa d end
-module Rd : interface re ra end
+module Wr : sig
+  type 'a t = { we : 'a; wa : 'a; d : 'a; }[@@deriving hardcaml]
+end
+module Rd : sig
+  type 'a t = { re : 'a; ra : 'a; }[@@deriving hardcaml]
+end
 
 type mode = [ `async_rbw | `async_wbr | `sync_rbw | `sync_wbr ]
 

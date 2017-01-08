@@ -129,7 +129,7 @@ let testbench_mram () =
   let rand_rd () = 
     if random_re then L.Rd.(map rand t) 
     else
-      L.Rd.{ map rand t with re = 1, 1 } 
+      L.Rd.{ (map rand t) with re = 1, 1 } 
   in
 
   (* implement the reads and writes *)

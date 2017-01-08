@@ -30,9 +30,15 @@ module Simlib = struct
   end
 
   module Op1 = struct
-    module P = interface A_SIGNED A_WIDTH Y_WIDTH end
-    module I = interface A end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { a_signed : 'a[@rtlname "A_SIGNED"]; a_width : 'a[@rtlname "A_WIDTH"]; y_width : 'a[@rtlname "Y_WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
 
     let res p = if p.P.a_signed = 1 then sresize else uresize 
@@ -80,9 +86,15 @@ module Simlib = struct
     let get_output_width p = O.({ y = p.P.y_width })
   end
   module Op2 = struct
-    module P = interface A_SIGNED B_SIGNED A_WIDTH B_WIDTH Y_WIDTH end
-    module I = interface A B end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { a_signed : 'a[@rtlname "A_SIGNED"]; b_signed : 'a[@rtlname "B_SIGNED"]; a_width : 'a[@rtlname "A_WIDTH"]; b_width : 'a[@rtlname "B_WIDTH"]; y_width : 'a[@rtlname "Y_WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; b : 'a[@rtlname "B"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
 
     let res p = if p.P.a_signed = 1 && p.P.b_signed = 1 then sresize else uresize
@@ -213,9 +225,15 @@ module Simlib = struct
   end
 
   module Fa = struct
-    module P = interface WIDTH end
-    module I = interface A B C end
-    module O = interface X Y end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; b : 'a[@rtlname "B"]; c : 'a[@rtlname "C"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { x : 'a[@rtlname "X"]; y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
 
     let fa _ p i = 
@@ -240,9 +258,15 @@ module Simlib = struct
   end
 
   module Lcu = struct
-    module P = interface WIDTH end
-    module I = interface P G CI end
-    module O = interface CO end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { p : 'a[@rtlname "P"]; g : 'a[@rtlname "G"]; ci : 'a[@rtlname "CI"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { co : 'a[@rtlname "CO"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
 
     let lcu _ p i = 
@@ -271,9 +295,15 @@ module Simlib = struct
   end
 
   module Slice = struct
-    module P = interface OFFSET A_WIDTH Y_WIDTH end
-    module I = interface A end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { offset : 'a[@rtlname "OFFSET"]; a_width : 'a[@rtlname "A_WIDTH"]; y_width : 'a[@rtlname "Y_WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     
     let slice _ p i = 
@@ -289,9 +319,15 @@ module Simlib = struct
   end
 
   module Concat = struct 
-    module P = interface A_WIDTH B_WIDTH end
-    module I = interface A B end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { a_width : 'a[@rtlname "A_WIDTH"]; b_width : 'a[@rtlname "B_WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; b : 'a[@rtlname "B"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     
     let concat _ p i = 
@@ -308,9 +344,15 @@ module Simlib = struct
   end
 
   module Mux = struct 
-    module P = interface WIDTH end
-    module I = interface A B S end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; b : 'a[@rtlname "B"]; s : 'a[@rtlname "S"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     
     let mux _ p i = 
@@ -328,9 +370,15 @@ module Simlib = struct
   end
 
   module Pmux = struct 
-    module P = interface WIDTH S_WIDTH end
-    module I = interface A B S end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; s_width : 'a[@rtlname "S_WIDTH"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; b : 'a[@rtlname "B"]; s : 'a[@rtlname "S"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     
     let pmux _ p i = 
@@ -342,7 +390,7 @@ module Simlib = struct
         match s with
         | [] -> a
         | s::t -> 
-          let b' = b.[((i+1)*p.P.width)-1:i*p.P.width] in
+          let b' = select b (((i+1)*p.P.width)-1) (i*p.P.width) in
           mux2 s b' (pmux t a b (i+1))
       in
       O.({ y = pmux (List.rev @@ bits i.I.s) i.I.a i.I.b 0 })
@@ -355,9 +403,15 @@ module Simlib = struct
   end
 
   module Lut = struct 
-    module P = interface WIDTH LUT end
-    module I = interface A end
-    module O = interface Y end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; lut : 'a[@rtlname "LUT"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { a : 'a[@rtlname "A"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { y : 'a[@rtlname "Y"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     
     let lut _ p i = 
@@ -387,9 +441,15 @@ module Simlib = struct
   (* module Sr = struct end *)
 
   module Dff = struct
-    module P = interface WIDTH CLK_POLARITY end
-    module I = interface CLK D end
-    module O = interface Q end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { clk : 'a[@rtlname "CLK"]; d : 'a[@rtlname "D"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { q : 'a[@rtlname "Q"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     let dff _ p i = 
       let open I in
@@ -404,9 +464,15 @@ module Simlib = struct
   end
 
   module Dffe = struct
-    module P = interface WIDTH CLK_POLARITY EN_POLARITY end
-    module I = interface CLK EN D end
-    module O = interface Q end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; en_polarity : 'a[@rtlname "EN_POLARITY"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { clk : 'a[@rtlname "CLK"]; en : 'a[@rtlname "EN"]; d : 'a[@rtlname "D"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { q : 'a[@rtlname "Q"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     let dffe _ p i = 
       let open I in
@@ -422,9 +488,15 @@ module Simlib = struct
   end
 
   module Dffsr = struct
-    module P = interface WIDTH CLK_POLARITY SET_POLARITY CLR_POLARITY end
-    module I = interface CLK SET CLR D end
-    module O = interface Q end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; set_polarity : 'a[@rtlname "SET_POLARITY"]; clr_polarity : 'a[@rtlname "CLR_POLARITY"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { clk : 'a[@rtlname "CLK"]; set : 'a[@rtlname "SET"]; clr : 'a[@rtlname "CLR"]; d : 'a[@rtlname "D"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { q : 'a[@rtlname "Q"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     let dffsr _ p i = 
       let open I in
@@ -439,7 +511,7 @@ module Simlib = struct
         Seq.reg ~clk:i.clk ~clkl ~r:(set |: clr) ~rv:(mux2 clr gnd vdd) ~e:empty d
       in
       O.({ q = concat @@ List.rev @@ Array.to_list @@
-                Array.init p.P.width (fun j -> dffsr i.set.[j:j] i.clr.[j:j] i.d.[j:j]) })
+                Array.init p.P.width (fun j -> dffsr [%hw i.set.[j,j]] [%hw i.clr.[j,j]] [%hw i.d.[j,j]]) })
     let dffsr = "$dffsr", dffsr
     let cells = [ dffsr ]
     let get_input_width p = I.({ clk = 1; set = p.P.width; clr = p.P.width; d = p.P.width })
@@ -447,9 +519,15 @@ module Simlib = struct
   end
 
   module Adff = struct
-    module P = interface WIDTH CLK_POLARITY ARST_POLARITY ARST_VALUE end
-    module I = interface CLK ARST D end
-    module O = interface Q end
+    module P = struct
+      type 'a t = { width : 'a[@rtlname "WIDTH"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; arst_polarity : 'a[@rtlname "ARST_POLARITY"]; arst_value : 'a[@rtlname "ARST_VALUE"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { clk : 'a[@rtlname "CLK"]; arst : 'a[@rtlname "ARST"]; d : 'a[@rtlname "D"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { q : 'a[@rtlname "Q"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     let adff _ p i = 
       let open I in
@@ -475,9 +553,13 @@ module Simlib = struct
 
   (* must use 'memory -dff' *)
   module Memwr = struct
-    module P = interface PRIORITY CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
-    module I = interface EN CLK DATA ADDR end
-    module O = interface end
+    module P = struct
+      type 'a t = { priority : 'a[@rtlname "PRIORITY"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; clk_enable : 'a[@rtlname "CLK_ENABLE"]; width : 'a[@rtlname "WIDTH"]; abits : 'a[@rtlname "ABITS"]; memid : 'a[@rtlname "MEMID"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { en : 'a[@rtlname "EN"]; clk : 'a[@rtlname "CLK"]; data : 'a[@rtlname "DATA"]; addr : 'a[@rtlname "ADDR"]; }[@@deriving hardcaml]
+    end
+    module O = HardCaml.Interface.Empty
     module W = Wrapper(P)(I)(O)
     let get_input_width p = I.({ en = p.P.width; clk = 1; data = p.P.width; addr = p.P.abits })
     let get_output_width p = O.(map snd t)
@@ -491,7 +573,7 @@ module Simlib = struct
       assert (width i.addr = p.P.abits);
       let p' = 
         P.(to_list @@ 
-            { map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p with
+            { (map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p) with
               memid = "MEMID", Signal.Types.ParamString memid })
       in
       let inst = 
@@ -506,9 +588,15 @@ module Simlib = struct
   end
 
   module Memrd = struct
-    module P = interface TRANSPARENT CLK_POLARITY CLK_ENABLE WIDTH ABITS MEMID end
-    module I = interface EN CLK ADDR end
-    module O = interface DATA end
+    module P = struct
+      type 'a t = { transparent : 'a[@rtlname "TRANSPARENT"]; clk_polarity : 'a[@rtlname "CLK_POLARITY"]; clk_enable : 'a[@rtlname "CLK_ENABLE"]; width : 'a[@rtlname "WIDTH"]; abits : 'a[@rtlname "ABITS"]; memid : 'a[@rtlname "MEMID"]; }[@@deriving hardcaml]
+    end
+    module I = struct
+      type 'a t = { en : 'a[@rtlname "EN"]; clk : 'a[@rtlname "CLK"]; addr : 'a[@rtlname "ADDR"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { data : 'a[@rtlname "DATA"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
     let get_input_width p = I.({ en = p.P.width; clk = 1; addr = p.P.abits })
     let get_output_width p = O.({ data = p.P.width })
@@ -521,7 +609,7 @@ module Simlib = struct
       assert (width i.addr = p.P.abits);
       let p' = 
         P.(to_list @@ 
-            { map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p with
+            { (map2 (fun (n,_) x -> n, Signal.Types.ParamInt x) t p) with
               memid = "MEMID", Signal.Types.ParamString memid })
       in
       let inst = 
@@ -537,13 +625,19 @@ module Simlib = struct
 
   (* 'memory -nomap; opt; clean' *)
   module Mem = struct
-    module P = interface 
-      ABITS INIT MEMID OFFSET SIZE WIDTH
-      RD_CLK_ENABLE RD_CLK_POLARITY RD_PORTS RD_TRANSPARENT 
-      WR_CLK_ENABLE WR_CLK_POLARITY WR_PORTS
+    module P = struct
+      type 'a t = { 
+        abits : 'a[@rtlname "ABITS"]; init : 'a[@rtlname "INIT"]; memid : 'a[@rtlname "MEMID"]; offset : 'a[@rtlname "OFFSET"]; size : 'a[@rtlname "SIZE"]; width : 'a[@rtlname "WIDTH"];
+        rd_clk_enable : 'a[@rtlname "RD_CLK_ENABLE"]; rd_clk_polarity : 'a[@rtlname "RD_CLK_POLARITY"]; rd_ports : 'a[@rtlname "RD_PORTS"]; rd_transparent : 'a[@rtlname "RD_TRANSPARENT"]; 
+        wr_clk_enable : 'a[@rtlname "WR_CLK_ENABLE"]; wr_clk_polarity : 'a[@rtlname "WR_CLK_POLARITY"]; wr_ports : 'a[@rtlname "WR_PORTS"];
+      }[@@deriving hardcaml]
     end
-    module I = interface RD_ADDR RD_CLK RD_EN WR_ADDR WR_CLK WR_DATA WR_EN end
-    module O = interface RD_DATA end
+    module I = struct
+      type 'a t = { rd_addr : 'a[@rtlname "RD_ADDR"]; rd_clk : 'a[@rtlname "RD_CLK"]; rd_en : 'a[@rtlname "RD_EN"]; wr_addr : 'a[@rtlname "WR_ADDR"]; wr_clk : 'a[@rtlname "WR_CLK"]; wr_data : 'a[@rtlname "WR_DATA"]; wr_en : 'a[@rtlname "WR_EN"]; }[@@deriving hardcaml]
+    end
+    module O = struct
+      type 'a t = { rd_data : 'a[@rtlname "RD_DATA"]; }[@@deriving hardcaml]
+    end
     module W = Wrapper(P)(I)(O)
 
     let get_input_base_width p = 
