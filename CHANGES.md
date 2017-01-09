@@ -1,4 +1,8 @@
-# v0.1.1
+# v0.1.3
+
+* fix opam-publish
+
+# v0.1.2
 
 * opam-publish
 

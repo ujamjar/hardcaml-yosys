@@ -19,6 +19,6 @@ depends: [
 ]
 available: [ ocaml-version >= "4.02.0" ]
 name: "hardcaml-yosys"
-version: "0.1.2"
+version: "0.1.3"
 license: "ISC"
 substs:[ "pkg/META" ]
