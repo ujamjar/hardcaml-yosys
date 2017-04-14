@@ -17,9 +17,16 @@ type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t 
 
 val black_box_of_cell : Yosys_atd_t.cell -> ('a -> Techlib.cell) *)
 
+val get_bus_of_nets : 
+  string ->
+  (int * HardCaml.Signal.Comb.t) I.t ->
+  Yosys_atd_t.dyn list -> HardCaml.Signal.Comb.t
+
 val load : 
   (* allow black boxes *)
   ?blackbox:bool ->
+  (* use names from netlist, where possible *)
+  ?keepnames:bool ->
   (* techlib *)
   string list * (Cell.t -> Techlib.cell) Techlib.assoc -> 
   (* design(s) *)

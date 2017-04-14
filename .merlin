@@ -4,3 +4,4 @@ S test
 PKG hardcaml
 PKG atdgen
 PKG yojson
+PKG ppx_hardcaml

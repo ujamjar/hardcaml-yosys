@@ -37,18 +37,18 @@ let _ = Arg.(parse [
   "-vlog", Set(vlog), "Dump verilog";
   "-no-waves", Set(no_waves), "Disable waveform view";
 ] (fun _ -> failwith "invalid anon arg")
-"LVT Multiport Memory Testbench.
-
-Builds memories with N read/M write ports from simpler 1 read/1 write 
-port memories (as available in FPGAs).  Requires N*M base memories 
-plus a so called Live Value Table to directs reads to the most
-recently accessed write data.
-
-Each port may be set independently in syncronous or asynchronous read mode with
-read-before-write or write-before-read behaviour (by default the testbench alternates 
-between port modes).
-
-For testing the read-enable port may be held constant.
+"LVT Multiport Memory Testbench.\
+\
+Builds memories with N read/M write ports from simpler 1 read/1 write \
+port memories (as available in FPGAs).  Requires N*M base memories \
+plus a so called Live Value Table to directs reads to the most\
+recently accessed write data.\
+\
+Each port may be set independently in syncronous or asynchronous read mode with\
+read-before-write or write-before-read behaviour (by default the testbench alternates \
+between port modes).\
+\
+For testing the read-enable port may be held constant.\
 ")
 
 let testbench_mram () = 

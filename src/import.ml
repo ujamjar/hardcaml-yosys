@@ -8,28 +8,49 @@ exception Empty_bus of string
 exception Expecting_memory_id
 module I = Map.Make(struct type t = int let compare = compare end)
 module S = Map.Make(struct type t = string let compare = compare end)
+module N = Map.Make(struct type t = int list let compare = compare end)
 module Y = Yosys_atd_t 
 
 type create_fn = HardCaml.Signal.Comb.t Techlib.assoc -> HardCaml.Signal.Comb.t Techlib.assoc
+
+let get_net_name_map netnames = 
+  let add map (name,netname) = 
+    let bits = List.map Cell.net_of_bit netname.Y.bits in
+    if N.mem bits map then 
+      let n = N.find bits map in
+      N.add bits (name::n) map
+    else
+      N.add bits [name] map
+  in
+  List.fold_left add N.empty netnames 
 
 (* something drives a net; it's either a module input, or a cell output. 
 
     create wires and a map from bits (nets) to wires/indexes for module 
     inputs and cell outputs *)
-let modl_wire_map ports cells = 
+let modl_wire_map ~busnames ~ports ~cells = 
   let map = List.fold_left (fun map (b,s) -> I.add b (0,s) map) I.empty 
-    [ 0,Signal.Comb.gnd; 1,Signal.Comb.vdd ]
+    [ 0, (Signal.Comb.gnd); 1, (Signal.Comb.vdd) ]
   in
 
-  (* generate a wire, and create a mapping from the net index to the wire and offet *)
-  let map_of_bits map (name,bits) = 
-    let wire = Signal.Comb.wire (List.length bits) in
-    (name,wire), snd @@ List.fold_left 
+  (* generate a wire, and create a mapping from the net index to the wire and offset *)
+  let wire_with_name busnames bits_ = 
+    let open Signal.Comb in
+    let wire = wire (List.length bits_) in
+    try 
+      let names = N.find bits_ busnames in
+      wire, names
+    with Not_found -> 
+      wire, []
+  in
+  let map_of_bits map (name,bits_) = 
+    let wire,bname = wire_with_name busnames bits_ in
+    (name,wire,bname), snd @@ List.fold_left 
       (fun (idx,map) bit ->
         (* note; adding [bit] if it is already in the list 
             should be an error (well...except for trisates!) *)
         (*printf "%i -> %Li[%i]\n" bit (Signal.Types.uid wire) idx;*)
-        idx+1, I.add bit (idx,wire) map) (0,map) bits
+        idx+1, I.add bit (idx,wire) map) (0,map) bits_
   in
 
   let map_with_list f map x = 
@@ -39,9 +60,10 @@ let modl_wire_map ports cells =
     in
     List.rev ws,map
   in
+
   let map_with_smap f map x = 
     let ws,map = map_with_list f map x in
-    List.fold_right (fun (n,s) map -> S.add n s map) ws S.empty, map
+    List.fold_right (fun (n,s,m) map -> S.add n (s,m) map) ws S.empty, map
   in
 
   (* mapping to module inputs *)
@@ -110,7 +132,35 @@ let black_box_of_cell cell  =
   in
   f
 
-let load_modl blackbox (black_boxes,techlib) (name,modl) = 
+let get_bus cell_name map bus = 
+  let open Signal.Comb in
+  let find b =
+    try I.find b map 
+    with Not_found -> raise (Failed_to_find_net(b))
+  in
+  let simple = false in
+  if simple then
+    concat @@ List.rev @@ List.map (fun b -> let i,w = find b in [%hw w.[i,i]]) bus
+  else (* consolidate bus, where possible *)
+    let rec opt (w,l,h) bus = 
+      match bus with
+      | [] -> [(w,l,h)]
+      | b::bus ->
+        let open Signal.Types in
+        let i,w' = find b in
+        if i=(h+1) && (uid w') = (uid w) then opt (w,l,h+1) bus
+        else (w,l,h) :: opt (w',i,i) bus
+    in
+    match bus with
+    | [] -> raise (Empty_bus cell_name)
+    | h::t -> 
+      let i,w = find h in
+      let l = opt (w,i,i) t in
+      concat @@ List.rev @@ List.map (fun (w,l,h) -> [%hw w.[h,l]]) l
+
+let get_bus_of_nets name map bus = get_bus name map (List.map Cell.net_of_bit bus) 
+
+let load_modl ~blackbox ~keepnames (black_boxes,techlib) (name,modl) = 
   let bbmap = List.fold_left (fun map m -> S.add ("$"^m) m map) S.empty black_boxes in
 
   (* find cell in the techlib *)
@@ -137,33 +187,6 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   (* instantiate all the cells *)
   let open Signal.Comb in
 
-  let get_bus cell_name map bus = 
-    let find b =
-      try I.find b map 
-      with Not_found -> raise (Failed_to_find_net(b))
-    in
-    let simple = false in
-    if simple then
-      concat @@ List.rev @@ List.map (fun b -> let i,w = find b in [%hw w.[i,i]]) bus
-    else (* consolidate bus, where possible *)
-      let rec opt (w,l,h) bus = 
-        match bus with
-        | [] -> [(w,l,h)]
-        | b::bus ->
-          let open Signal.Types in
-          let i,w' = find b in
-          if i=(h+1) && (uid w') = (uid w) then opt (w,l,h+1) bus
-          else (w,l,h) :: opt (w',i,i) bus
-      in
-      match bus with
-      | [] -> raise (Empty_bus cell_name)
-      | h::t -> 
-        let i,w = find h in
-        let l = opt (w,i,i) t in
-        concat @@ List.rev @@ List.map (fun (w,l,h) -> [%hw w.[h,l]]) l
-  in
-  let get_bus_of_nets name map bus = get_bus name map (List.map Cell.net_of_bit bus) in
-
   let instantiate_cell map (cell_name,cell,cell_fn) co = 
     (* create parameters *)
     let params = Cell.mk_params cell_name cell.Cell.parameters in
@@ -172,7 +195,8 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
     (* instantiate module *)
     let outputs = cell_fn params inputs in 
     (* connect outputs *)
-    List.iter (fun (n,o) -> S.find n co <== o) outputs
+    let (--) a b = List.fold_left (--) a b in
+    List.iter (fun (n,o) -> let w,m = S.find n co in w <== (o -- m)) outputs
   in
 
   let instantiate map cells co = List.iter2 (instantiate_cell map) cells co in
@@ -180,7 +204,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   (* connect together wires *)
   let connect_inputs inputs mi = 
     let find n = 
-      try S.find n mi
+      try fst (S.find n mi)
       with Not_found -> raise (Input_not_found(n))
     in
     List.iter (fun (n,i) -> find n <== i) inputs
@@ -192,8 +216,9 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
 
   let load_modl modl =
     let cells = List.map mk_cell modl.Y.cells in
+    let busnames = if keepnames then get_net_name_map modl.Y.netnames else N.empty in
     (*let cells = convert_memories cells in*)
-    let mi,co,map = modl_wire_map modl.Y.ports cells in
+    let mi,co,map = modl_wire_map ~busnames ~ports:modl.Y.ports ~cells:cells in
     instantiate map cells co;
     mi,co,map
   in
@@ -212,7 +237,7 @@ let load_modl blackbox (black_boxes,techlib) (name,modl) =
   in
   name, (inputs, outputs, create)
 
-let load ?(blackbox=true) techlib t = 
-  List.map (load_modl blackbox techlib) t.Y.modl
+let load ?(blackbox=true) ?(keepnames=false) techlib t = 
+  List.map (load_modl ~blackbox ~keepnames techlib) t.Y.modl
 
 

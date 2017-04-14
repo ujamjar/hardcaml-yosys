@@ -2,17 +2,17 @@
 
 module counter (
   input clk, rst, clr, en,
-  output reg [7:0] q,
-  output p
+  output reg [7:0] q
 );
+  reg [7:0] c;
 
   always @(posedge clk, posedge rst) begin
-    if (rst) q <= 0;
-    else if (clr) q <= 0;
-    else if (en) q <= q + 1;
+    if (rst) c <= 0;
+    else if (clr) c <= 0;
+    else if (en) c <= c + 1;
   end
 
-  assign p = q[7];
+  assign q = c;
 
 endmodule
   
