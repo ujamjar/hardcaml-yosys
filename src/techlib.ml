@@ -10,6 +10,10 @@ let pint = function Signal.Types.ParamInt i -> i
                   | _ -> raise (Invalid_parameter "expecting int parameter")
 let pstr = function Signal.Types.ParamString s -> s 
                   | _ -> raise (Invalid_parameter "expecting string parameter")
+let pconst w = function
+  | Signal.Types.ParamInt i -> Signal.Comb.consti w i 
+  | Signal.Types.ParamString s -> Signal.Comb.constv (string_of_int w ^ "'b" ^ s) 
+  | _ -> raise (Invalid_parameter "bad const value")
 
 module Simlib = struct
 
@@ -531,11 +535,12 @@ module Simlib = struct
     module W = Wrapper(P)(I)(O)
     let adff _ p i = 
       let open I in
-      let p = P.map pint p in
+      let arst_value = pconst (pint p.P.width) p.P.arst_value in
+      let p = P.map (fun p -> try pint p with _ -> 0) p in
       assert (width i.d = p.P.width);
       let clkl = if p.P.clk_polarity = 1 then vdd else gnd in
       let rl = if p.P.arst_polarity = 1 then vdd else gnd in
-      let rv = consti p.P.width p.P.arst_value in
+      let rv = arst_value in
       O.({ q = Seq.reg ~clk:i.clk ~clkl ~r:i.arst ~rl ~rv ~e:empty i.d })
     let adff = "$adff", adff
     let cells = [ adff ]

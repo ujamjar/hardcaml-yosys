@@ -5,3 +5,4 @@ PKG hardcaml
 PKG atdgen
 PKG yojson
 PKG ppx_hardcaml
+PKG ppx_deriving_hardcaml
