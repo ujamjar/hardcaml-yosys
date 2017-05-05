@@ -122,10 +122,10 @@ let convert_memories cells =
 *)
 
 (* create black box for cell *)
-let black_box_of_cell cell  = 
+let black_box_of_cell inst_name cell  = 
   let _, outputs = Cell.partition_ios cell in
   let f _ p i = 
-    let inst = Signal.Instantiation.inst cell.Y.typ p i
+    let inst = Signal.Instantiation.inst ~instance:inst_name cell.Y.typ p i
       (List.map (fun (n,b) -> n, List.length b) outputs)
     in
     List.map (fun (n,_) -> n, inst#o n) outputs
@@ -164,16 +164,16 @@ let load_modl ~blackbox ~keepnames (black_boxes,techlib) (name,modl) =
   let bbmap = List.fold_left (fun map m -> S.add ("$"^m) m map) S.empty black_boxes in
 
   (* find cell in the techlib *)
-  let find_cell cell = 
+  let find_cell inst_name cell = 
     (* match the cell in the techlib *)
     match List.assoc cell.Y.typ techlib with
     | cell -> cell
     | exception Not_found -> begin
       (* could be a blackbox cell from the techlib *)
       match S.find cell.Y.typ bbmap with
-      | n -> black_box_of_cell { cell with Y.typ = n }
+      | n -> black_box_of_cell inst_name { cell with Y.typ = n }
       (* otherwise pure blackbox, if allowed *)
-      | exception Not_found when blackbox -> black_box_of_cell cell
+      | exception Not_found when blackbox -> black_box_of_cell inst_name cell
       | exception Not_found -> raise Y.(Cell_not_in_techlib(cell.typ, cell.attributes.src))
     end
   in
@@ -181,7 +181,7 @@ let load_modl ~blackbox ~keepnames (black_boxes,techlib) (name,modl) =
   (* get cell with explicit inputs and outputs and map to techlib *)
   let mk_cell (inst_name,cell) = 
     let cell' = Cell.mk_cell cell in
-    inst_name, cell', ((find_cell cell) cell') 
+    inst_name, cell', ((find_cell inst_name cell) cell') 
   in
 
   (* instantiate all the cells *)
