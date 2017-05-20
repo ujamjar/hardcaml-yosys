@@ -1,7 +1,0 @@
-"src": include
-<src/*>: package(hardcaml), package(atdgen), package(yojson), package(ppx_deriving_hardcaml), package(ppx_hardcaml)
-<src/*.cmx> and not "src/HardCamlYosys.cmx": for-pack(HardCamlYosys)
-
-<test/*>: package(hardcaml), package(atdgen), package(yojson), package(hardcaml-waveterm), package(ppx_deriving_hardcaml)
-
-true: warn(@5@8@10@11@12@14@23@24@26@29@40)

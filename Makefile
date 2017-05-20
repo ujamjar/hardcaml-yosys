@@ -11,26 +11,18 @@
 .PHONY: clean all build clean sat_gen sat_check test
 default: all
 
-ATDSRC = src/yosys_atd_j.mli src/yosys_atd_j.ml src/yosys_atd_t.mli src/yosys_atd_t.ml
-	
-$(ATDSRC): src/yosys_atd.atd
-	cd src && atdgen -t yosys_atd.atd
-	cd src && atdgen -j -j-std -j-strict-fields yosys_atd.atd
-
-
 ####################################################
 
 all: build
 
 build:
-	cp pkg/META.in pkg/META
-	ocaml pkg/pkg.ml build
+	jbuilder build @install
 
 test:
-	ocamlbuild test.otarget
+	jbuilder build @test/tests
 
 clean:
-	ocaml pkg/pkg.ml clean
+	rm -fr _build
 	find . -name "*~" | xargs rm -f
 	rm -f *.bc *.ll
 

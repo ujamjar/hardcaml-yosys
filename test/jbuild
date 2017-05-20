@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(executables
+ ((names (convert mram wrram))
+  (libraries (hardcaml-yosys hardcaml-waveterm))))
+
+(alias
+ ((name tests)
+  (deps (convert.exe mram.exe wrram.exe))))
+

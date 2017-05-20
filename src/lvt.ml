@@ -136,7 +136,7 @@ module Multiport_regs(C : Cfg) = struct
     let we1h = List.map (fun wr -> reg_we_enable ~we:wr.we ~wa:wr.wa) wr in
     Array.to_list @@ Array.init size 
       (fun elt ->
-        let wed = List.map2 (fun we1h wr -> [%hw we1h.[elt,elt]], wr.d) we1h wr in
+        let wed = List.map2 (fun we1h wr -> (bit we1h elt), wr.d) we1h wr in
         let we,d = pri wed in (* last d with write enable set *)
         let r = Seq.reg wspec we d in
         we, d, r)

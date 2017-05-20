@@ -515,7 +515,7 @@ module Simlib = struct
         Seq.reg ~clk:i.clk ~clkl ~r:(set |: clr) ~rv:(mux2 clr gnd vdd) ~e:empty d
       in
       O.({ q = concat @@ List.rev @@ Array.to_list @@
-                Array.init p.P.width (fun j -> dffsr [%hw i.set.[j,j]] [%hw i.clr.[j,j]] [%hw i.d.[j,j]]) })
+                Array.init p.P.width (fun j -> dffsr (bit i.set j) (bit i.clr j) (bit i.d j)) })
     let dffsr = "$dffsr", dffsr
     let cells = [ dffsr ]
     let get_input_width p = I.({ clk = 1; set = p.P.width; clr = p.P.width; d = p.P.width })

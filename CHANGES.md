@@ -1,13 +1,6 @@
-# v0.1.3
+# v0.2.0
 
-* fix opam-publish
-
-# v0.1.2
-
-* opam-publish
-
-# v0.1.1
-
+* Port to jbuild
 * port to ppx - remove camlp4
 
 # v0.1.0

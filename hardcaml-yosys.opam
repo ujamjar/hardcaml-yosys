@@ -6,19 +6,16 @@ license: "ISC"
 homepage: "https://github.com/ujamjar/hardcaml-yosys"
 bug-reports: "https://github.com/ujamjar/hardcaml-yosys/issues"
 dev-repo: "https://github.com/ujamjar/hardcaml-yosys.git"
-build: [ ["ocaml" "pkg/pkg.ml" "build"] ]
+build: [ ["jbuilder" "build" "-p" name "-j" jobs] ]
 depends: [
   "ocamlfind" {build}
-  "ocamlbuild" {build}
-  "topkg" {build}
+  "jbuilder" {build & >= "1.0+beta8"}
   "atdgen"
-  "camlp4"
   "hardcaml" { >= "1.2.0" & < "2.0.0" }
-  "ppx_hardcaml"
   "ppx_deriving_hardcaml"
 ]
 available: [ ocaml-version >= "4.02.0" ]
 name: "hardcaml-yosys"
-version: "0.1.3"
+version: "0.2.0"
 license: "ISC"
 substs:[ "pkg/META" ]

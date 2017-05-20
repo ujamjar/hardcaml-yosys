@@ -1,8 +1,0 @@
-version = "0.1.1"
-description = "Import Verilog designs into HardCaml"
-requires = "hardcaml atdgen"
-archive(byte) = "HardCamlYosys.cma"
-archive(byte, plugin) = "HardCamlYosys.cma"
-archive(native) = "HardCamlYosys.cmxa"
-archive(native, plugin) = "HardCamlYosys.cmxs"
-exists_if = "HardCamlYosys.cma"

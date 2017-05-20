@@ -140,7 +140,7 @@ let get_bus cell_name map bus =
   in
   let simple = false in
   if simple then
-    concat @@ List.rev @@ List.map (fun b -> let i,w = find b in [%hw w.[i,i]]) bus
+    concat @@ List.rev @@ List.map (fun b -> let i,w = find b in bit w i) bus
   else (* consolidate bus, where possible *)
     let rec opt (w,l,h) bus = 
       match bus with
@@ -156,7 +156,7 @@ let get_bus cell_name map bus =
     | h::t -> 
       let i,w = find h in
       let l = opt (w,i,i) t in
-      concat @@ List.rev @@ List.map (fun (w,l,h) -> [%hw w.[h,l]]) l
+      concat @@ List.rev @@ List.map (fun (w,l,h) -> select w h l) l
 
 let get_bus_of_nets name map bus = get_bus name map (List.map Cell.net_of_bit bus) 
 
