@@ -1,11 +1,11 @@
 (jbuild_version 1)
 
-(rule 
+(rule
  ((targets (yosys_atd_t.mli yosys_atd_t.ml))
   (deps (yosys_atd.atd))
   (action (run atdgen -t -o yosys_atd ${<}))))
 
-(rule 
+(rule
  ((targets (yosys_atd_j.mli yosys_atd_j.ml))
   (deps (yosys_atd.atd))
   (action (run atdgen -j -j-std -o yosys_atd ${<}))))
@@ -14,4 +14,4 @@
  ((name "HardCamlYosys")
   (public_name "hardcaml-yosys")
   (libraries (hardcaml atdgen yojson))
-  (preprocess (pps (ppx_deriving_omp ppx_deriving_hardcaml)))))
+  (preprocess (pps (ppx_deriving_hardcaml)))))
